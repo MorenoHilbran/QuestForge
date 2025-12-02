@@ -39,17 +39,70 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _loadUserProfile(String userId) async {
-    try {
-      final response = await SupabaseService.client
-          .from('profiles')
-          .select()
-          .eq('id', userId)
-          .single();
+    // Retry mechanism for network issues
+    int retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        // Add small delay for first-time OAuth users (profile creation)
+        if (retryCount > 0) {
+          await Future.delayed(Duration(milliseconds: 500 * retryCount));
+        }
+        
+        final response = await SupabaseService.client
+            .from('profiles')
+            .select('*, user_badges(*, badges(*))')
+            .eq('id', userId)
+            .single();
 
-      _currentUser = UserModel.fromJson(response);
-      notifyListeners();
-    } catch (e) {
-      if (kDebugMode) print('Error loading profile: $e');
+        if (kDebugMode) print('Profile data: $response');
+        
+        _currentUser = UserModel.fromJson(response);
+        notifyListeners();
+        return; // Success, exit
+      } catch (e, stackTrace) {
+        if (kDebugMode) {
+          print('Error loading profile (attempt ${retryCount + 1}): $e');
+          print('Stack trace: $stackTrace');
+        }
+        
+        // If profile doesn't exist on first attempt (new OAuth user), create it
+        if (retryCount == 0 && e.toString().contains('JSON object')) {
+          try {
+            final user = SupabaseService.client.auth.currentUser;
+            if (user != null) {
+              final email = user.email ?? '';
+              final name = user.userMetadata?['full_name'] ?? 
+                           user.userMetadata?['name'] ?? 
+                           email.split('@').first;
+              final avatarUrl = user.userMetadata?['avatar_url'] ?? 
+                               user.userMetadata?['picture'];
+              
+              if (kDebugMode) print('Creating new profile for user: $email');
+              
+              // Use upsert to avoid conflicts
+              await SupabaseService.client.from('profiles').upsert({
+                'id': userId,
+                'name': name,
+                'email': email,
+                'avatar_url': avatarUrl,
+                'role': 'user',
+              }, onConflict: 'id');
+              
+              if (kDebugMode) print('Profile created successfully');
+            }
+          } catch (createError) {
+            if (kDebugMode) print('Error creating profile: $createError');
+          }
+        }
+        
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          if (kDebugMode) print('Max retries reached for loading profile');
+          break;
+        }
+      }
     }
   }
 
@@ -68,11 +121,11 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await SupabaseService.client.auth.signInWithOAuth(
-        Provider.google,
+        OAuthProvider.google,
         redirectTo: kIsWeb 
             ? '${Uri.base.origin}/' 
-            : 'io.supabase.questforge://login-callback',
-        authScreenLaunchMode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+            : 'questforge://login-callback',
+        authScreenLaunchMode: LaunchMode.inAppWebView,
       );
       
       if (kDebugMode) print('OAuth response: $response');
@@ -116,6 +169,49 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = e.toString();
       notifyListeners();
       if (kDebugMode) print('Email sign in error: $e');
+      return false;
+    }
+  }
+
+  /// Sign up with email and password
+  Future<bool> signUpWithEmail(String email, String password, String name) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await SupabaseService.client.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'name': name,
+        },
+      );
+
+      if (response.user != null) {
+        // Create profile in profiles table
+        await SupabaseService.client.from('profiles').insert({
+          'id': response.user!.id,
+          'name': name,
+          'email': email,
+          'role': 'user',
+        });
+
+        await _loadUserProfile(response.user!.id);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
+      _isLoading = false;
+      _errorMessage = 'Registration failed';
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      if (kDebugMode) print('Email sign up error: $e');
       return false;
     }
   }

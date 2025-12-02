@@ -45,7 +45,7 @@ class NeoProgressBar extends StatelessWidget {
                 color: AppColors.background,
               ),
               FractionallySizedBox(
-                widthFactor: progress / 100,
+                widthFactor: progress.clamp(0.0, 1.0),
                 child: Container(
                   height: height,
                   decoration: BoxDecoration(
@@ -53,17 +53,8 @@ class NeoProgressBar extends StatelessWidget {
                     border: Border(
                       right: BorderSide(
                         color: Colors.black,
-                        width: progress < 100 ? AppConstants.borderWidth : 0,
+                        width: progress < 1.0 ? AppConstants.borderWidth : 0,
                       ),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '${progress.toStringAsFixed(0)}%',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
                     ),
                   ),
                 ),

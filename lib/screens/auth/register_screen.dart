@@ -6,54 +6,67 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/common/neo_button.dart';
 import '../../widgets/common/neo_text_field.dart';
 import '../main_navigation.dart';
-import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleGoogleSignIn() async {
-    final authProvider = context.read<AuthProvider>();
-    
-    // Just trigger OAuth - auth state listener will handle navigation automatically
-    await authProvider.signInWithGoogle();
-    
-    // Show error only if there's an error message (OAuth failed to launch)
-    if (authProvider.errorMessage != null && mounted) {
+  void _handleRegister() {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage!),
+        const SnackBar(
+          content: Text('Passwords do not match'),
           backgroundColor: AppColors.error,
         ),
       );
+      return;
     }
-    // Navigation will happen automatically via Consumer<AuthProvider> in main.dart
-    // when onAuthStateChange triggers after OAuth callback
-  }
-
-  void _handleEmailSignIn() {
-    if (!_formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
-    authProvider.signInWithEmail(
+    authProvider.signUpWithEmail(
       _emailController.text.trim(),
       _passwordController.text,
+      _nameController.text.trim(),
     ).then((success) {
+      if (success && mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainNavigation()),
+        );
+      } else if (authProvider.errorMessage != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.errorMessage!),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    });
+  }
+
+  void _handleGoogleSignUp() {
+    final authProvider = context.read<AuthProvider>();
+    authProvider.signInWithGoogle().then((success) {
       if (success && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MainNavigation()),
@@ -83,31 +96,31 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 // Title - Neobrutalism Style
                 Text(
-                'QuestForge',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 60,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -4,
-                  height: 1,
-                  color: Colors.black,
-                  shadows: [
-                    Shadow(
-                      color: Color(0xFFFF3B30),   // merah terang
-                      offset: Offset(6, 6),
-                      blurRadius: 0,
-                    ),
-                    Shadow(
-                      color: Color(0xFF00D2FF),   // cyan kontras
-                      offset: Offset(-3, -3),
-                      blurRadius: 0,
-                    ),
-                  ],
+                  'QuestForge',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 60,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -4,
+                    height: 1,
+                    color: Colors.black,
+                    shadows: [
+                      Shadow(
+                        color: Color(0xFFFF3B30), // merah terang
+                        offset: Offset(6, 6),
+                        blurRadius: 0,
+                      ),
+                      Shadow(
+                        color: Color(0xFF00D2FF), // cyan kontras
+                        offset: Offset(-3, -3),
+                        blurRadius: 0,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
                 const SizedBox(height: AppConstants.spacingS),
                 Text(
-                  'Build Your Dev Journey',
+                  'Create Your Account',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AppColors.textSecondary,
@@ -115,12 +128,28 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: AppConstants.spacingXL * 2),
 
-                // Email Login Form
+                // Register Form
                 Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      NeoTextField(
+                        label: 'Full Name',
+                        hint: 'Enter your name',
+                        controller: _nameController,
+                        keyboardType: TextInputType.name,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your name';
+                          }
+                          if (value.length < 3) {
+                            return 'Name must be at least 3 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppConstants.spacingM),
                       NeoTextField(
                         label: 'Email',
                         hint: 'Enter your email',
@@ -152,12 +181,25 @@ class _LoginScreenState extends State<LoginScreen> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: AppConstants.spacingM),
+                      NeoTextField(
+                        label: 'Confirm Password',
+                        hint: 'Re-enter your password',
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
+                          return null;
+                        },
+                      ),
                       const SizedBox(height: AppConstants.spacingL),
                       Consumer<AuthProvider>(
                         builder: (context, auth, _) {
                           return NeoButton(
-                            text: auth.isLoading ? 'Signing In...' : 'Sign In',
-                            onPressed: auth.isLoading ? () {} : _handleEmailSignIn,
+                            text: auth.isLoading ? 'Creating Account...' : 'Create Account',
+                            onPressed: auth.isLoading ? () {} : _handleRegister,
                             color: AppColors.primary,
                           );
                         },
@@ -190,12 +232,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: AppConstants.spacingL),
 
-                // Google Sign In Button
+                // Google Sign Up Button
                 Consumer<AuthProvider>(
                   builder: (context, auth, _) {
                     return NeoButton(
                       text: 'Continue with Google',
-                      onPressed: auth.isLoading ? () {} : _handleGoogleSignIn,
+                      onPressed: auth.isLoading ? () {} : _handleGoogleSignUp,
                       color: Colors.white,
                       icon: Icons.g_mobiledata_rounded,
                     );
@@ -204,23 +246,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: AppConstants.spacingXL),
 
-                // Register link
+                // Login link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Don't have an account? ",
+                      "Already have an account? ",
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.textSecondary,
                           ),
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const RegisterScreen(),
-                          ),
-                        );
+                        Navigator.of(context).pop();
                       },
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
@@ -228,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Text(
-                        'Register',
+                        'Sign In',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
@@ -239,7 +277,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: AppConstants.spacingM),
-                
               ],
             ),
           ),

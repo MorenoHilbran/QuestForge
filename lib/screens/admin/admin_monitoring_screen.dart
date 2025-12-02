@@ -31,7 +31,7 @@ class _AdminMonitoringScreenState extends State<AdminMonitoringScreen> {
     }
 
     try {
-      // Load all projects with user count and task progress
+      // Load all projects with user count
       final response = await SupabaseService.client
           .from('projects')
           .select('''
@@ -46,8 +46,26 @@ class _AdminMonitoringScreenState extends State<AdminMonitoringScreen> {
           ''')
           .order('created_at', ascending: false);
 
+      final projects = (response as List).cast<Map<String, dynamic>>();
+      
+      // Calculate actual progress from tasks for each project
+      for (var project in projects) {
+        final tasksResponse = await SupabaseService.client
+            .from('tasks')
+            .select('status')
+            .eq('project_id', project['id']);
+        
+        final tasks = (tasksResponse as List);
+        if (tasks.isNotEmpty) {
+          final completedTasks = tasks.where((task) => task['status'] == 'done').length;
+          project['actualProgress'] = (completedTasks / tasks.length * 100).toDouble();
+        } else {
+          project['actualProgress'] = 0.0;
+        }
+      }
+
       setState(() {
-        _projects = (response as List).cast<Map<String, dynamic>>();
+        _projects = projects;
         _isLoading = false;
       });
     } catch (e) {
@@ -61,14 +79,8 @@ class _AdminMonitoringScreenState extends State<AdminMonitoringScreen> {
   }
 
   double _calculateProjectProgress(Map<String, dynamic> project) {
-    final userProjects = project['user_projects'] as List?;
-    if (userProjects == null || userProjects.isEmpty) return 0.0;
-
-    double totalProgress = 0;
-    for (var up in userProjects) {
-      totalProgress += (up['progress'] ?? 0.0) as num;
-    }
-    return totalProgress / userProjects.length;
+    // Return actual progress calculated from tasks
+    return (project['actualProgress'] ?? 0.0) as double;
   }
 
   int _getUserCount(Map<String, dynamic> project) {
@@ -361,7 +373,7 @@ class _AdminMonitoringScreenState extends State<AdminMonitoringScreen> {
               ),
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
-                widthFactor: progress / 100,
+                widthFactor: (progress / 100).clamp(0.0, 1.0),
                 child: Container(
                   decoration: BoxDecoration(
                     color: progress < 30

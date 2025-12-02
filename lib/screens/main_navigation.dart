@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/common/auth_guard.dart';
 import 'home/home_screen.dart';
 import 'projects/projects_screen.dart';
 import 'profile/profile_screen.dart';
@@ -20,6 +21,12 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    return AuthGuard(
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     final List<Widget> screens = [

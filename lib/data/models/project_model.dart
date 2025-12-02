@@ -10,6 +10,7 @@ class ProjectModel {
   final String mode; // 'solo' or 'multiplayer'
   final List<String>? requiredRoles; // For team projects
   final List<Map<String, dynamic>>? joinedUsers; // Users who joined the project
+  final bool isCompleted; // If any user has completed this project
 
   ProjectModel({
     required this.id,
@@ -23,6 +24,7 @@ class ProjectModel {
     this.mode = 'solo',
     this.requiredRoles,
     this.joinedUsers,
+    this.isCompleted = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -69,6 +71,7 @@ class ProjectModel {
           ? List<String>.from(json['required_roles'])
           : null,
       joinedUsers: users,
+      isCompleted: json['isCompleted'] ?? false,
     );
   }
 

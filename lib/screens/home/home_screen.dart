@@ -6,7 +6,6 @@ import '../../providers/auth_provider.dart';
 import '../../services/supabase_service.dart';
 import '../../data/models/project_model.dart';
 import '../../widgets/common/neo_card.dart';
-import '../../widgets/common/neo_button.dart';
 import '../projects/join_project_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -37,21 +36,33 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final userId = context.read<AuthProvider>().currentUser?.id;
       
-      // Load projects with joined users info
+      // Load projects with joined users info, status, and role data for validation
       final response = _selectedDifficulty == 'all'
           ? await SupabaseService.client
               .from('projects')
-              .select('*, user_projects(user_id, profiles(id, name, avatar_url))')
+              .select('*, user_projects(user_id, status, role, profiles(id, name, avatar_url))')
               .order('created_at', ascending: false)
           : await SupabaseService.client
               .from('projects')
-              .select('*, user_projects(user_id, profiles(id, name, avatar_url))')
+              .select('*, user_projects(user_id, status, role, profiles(id, name, avatar_url))')
               .eq('difficulty', _selectedDifficulty)
               .order('created_at', ascending: false);
       
-      final projects = (response as List)
-          .map((json) => ProjectModel.fromJson(json))
-          .toList();
+      final projectsData = (response as List).cast<Map<String, dynamic>>();
+      
+      // Process each project to add completion status
+      final projects = <ProjectModel>[];
+      for (var data in projectsData) {
+        // Check if any user has completed this project
+        final userProjects = data['user_projects'] as List?;
+        bool isCompleted = false;
+        if (userProjects != null) {
+          isCompleted = userProjects.any((up) => up['status'] == 'completed');
+        }
+        data['isCompleted'] = isCompleted;
+        
+        projects.add(ProjectModel.fromJson(data));
+      }
       
       // Check which projects user has joined
       final joinedMap = <String, bool>{};
@@ -90,6 +101,141 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     
     return 6; // Default max for multiplayer
+  }
+
+  Widget _buildJoinButton(ProjectModel project) {
+    final isJoined = _userJoinedProjects[project.id] == true;
+    final isFull = (project.joinedUsers?.length ?? 0) >= _getMaxMembers(project);
+    final isCompleted = project.isCompleted;
+
+    // Already joined
+    if (isJoined) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.success,
+          border: Border.all(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.border,
+              offset: const Offset(4, 4),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle, color: Colors.black, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Already Joined',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Completed or Full - show disabled button
+    if (isCompleted || isFull) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.textSecondary.withOpacity(0.3),
+          border: Border.all(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isCompleted ? Icons.lock : Icons.people,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isCompleted ? 'Project Completed' : 'Project Full',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Available to join
+    return GestureDetector(
+      onTap: () async {
+        // Fetch complete project data including role_limits
+        final completeProject = await SupabaseService.client
+            .from('projects')
+            .select('*, user_projects(user_id, role)')
+            .eq('id', project.id)
+            .single();
+        
+        final result = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => JoinProjectScreen(
+              project: completeProject,
+            ),
+          ),
+        );
+
+        if (result == true && mounted) {
+          _loadProjects(); // Refresh to show joined status
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Project joined successfully!')),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          border: Border.all(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.border,
+              offset: const Offset(4, 4),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_circle, color: Colors.black, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Join Project',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -342,28 +488,63 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: AppConstants.spacingM),
 
-              // Difficulty badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.spacingM,
-                  vertical: AppConstants.spacingS,
-                ),
-                decoration: BoxDecoration(
-                  color: difficultyColor,
-                  border: Border.all(
-                    color: AppColors.border,
-                    width: AppConstants.borderWidth,
+              // Badges Row: Difficulty and Completed
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.spacingM,
+                      vertical: AppConstants.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: difficultyColor,
+                      border: Border.all(
+                        color: AppColors.border,
+                        width: AppConstants.borderWidth,
+                      ),
+                      borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+                    ),
+                    child: Text(
+                      project.difficulty.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                ),
-                child: Text(
-                  project.difficulty.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
+                  if (project.isCompleted) ...[
+                    const SizedBox(width: AppConstants.spacingS),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.spacingM,
+                        vertical: AppConstants.spacingS,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.success,
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: AppConstants.borderWidth,
+                        ),
+                        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.check_circle, size: 14, color: Colors.black),
+                          SizedBox(width: 4),
+                          Text(
+                            'COMPLETED',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
               
               const SizedBox(height: AppConstants.spacingM),
@@ -406,66 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   
                   // Join Button or Joined Status
                   Expanded(
-                    child: _userJoinedProjects[project.id] == true
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.success,
-                              border: Border.all(
-                                color: AppColors.border,
-                                width: AppConstants.borderWidth,
-                              ),
-                              borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.border,
-                                  offset: const Offset(4, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.check_circle, color: Colors.black, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Already Joined',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : NeoButton(
-                            text: 'Join Project',
-                            onPressed: () async {
-                              final result = await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => JoinProjectScreen(
-                                    project: {
-                                      'id': project.id,
-                                      'title': project.title,
-                                      'description': project.description,
-                                      'difficulty': project.difficulty,
-                                      'mode': project.mode,
-                                      'required_roles': project.requiredRoles ?? [],
-                                    },
-                                  ),
-                                ),
-                              );
-
-                              if (result == true && mounted) {
-                                _loadProjects(); // Refresh to show joined status
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Project joined successfully!')),
-                                );
-                              }
-                            },
-                            color: AppColors.primary,
-                          ),
+                    child: _buildJoinButton(project),
                   ),
                 ],
               ),

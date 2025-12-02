@@ -38,20 +38,41 @@ class UserModel {
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      avatarUrl: json['avatar_url'],
-      bio: json['bio'],
-      role: json['role'] ?? 'user',
-      badges: (json['badges'] as List<dynamic>?)
-              ?.map((b) => BadgeModel.fromJson(b as Map<String, dynamic>))
-              .toList() ??
-          [],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
-    );
+    // Parse badges from user_badges relation
+    List<BadgeModel> badgesList = [];
+    try {
+      if (json['user_badges'] != null) {
+        final userBadges = json['user_badges'] as List<dynamic>;
+        badgesList = userBadges
+            .where((ub) => ub['badges'] != null)
+            .map((ub) => BadgeModel.fromJson(ub['badges'] as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (e) {
+      print('Error parsing badges: $e');
+    }
+
+    try {
+      return UserModel(
+        id: json['id']?.toString() ?? '',
+        name: json['name']?.toString() ?? 'Unknown',
+        email: json['email']?.toString() ?? '',
+        avatarUrl: json['avatar_url']?.toString(),
+        bio: json['bio']?.toString(),
+        role: json['role']?.toString() ?? 'user',
+        badges: badgesList,
+        createdAt: json['created_at'] != null 
+            ? DateTime.parse(json['created_at'].toString()) 
+            : DateTime.now(),
+        updatedAt: json['updated_at'] != null 
+            ? DateTime.parse(json['updated_at'].toString()) 
+            : DateTime.now(),
+      );
+    } catch (e) {
+      print('Error creating UserModel: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
   }
 
   UserModel copyWith({
@@ -109,12 +130,14 @@ class BadgeModel {
 
   factory BadgeModel.fromJson(Map<String, dynamic> json) {
     return BadgeModel(
-      name: json['name'],
-      description: json['description'],
-      iconUrl: json['icon_url'],
-      category: json['category'],
-      tier: json['tier'],
-      awardedAt: DateTime.parse(json['awarded_at']),
+      name: json['name']?.toString() ?? 'Unknown Badge',
+      description: json['description']?.toString() ?? '',
+      iconUrl: json['icon_url']?.toString(),
+      category: json['category']?.toString() ?? 'meta',
+      tier: json['tier']?.toString(),
+      awardedAt: json['awarded_at'] != null 
+          ? DateTime.parse(json['awarded_at'].toString())
+          : DateTime.now(),
     );
   }
 }
