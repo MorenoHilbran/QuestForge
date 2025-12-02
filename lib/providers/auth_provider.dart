@@ -1,81 +1,179 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../data/models/user_model.dart';
-import '../../core/constants/app_constants.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../data/models/user_model.dart';
+import '../services/supabase_service.dart';
 
-class AuthProvider with ChangeNotifier {
+class AuthProvider extends ChangeNotifier {
   UserModel? _currentUser;
-  bool _isLoggedIn = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   UserModel? get currentUser => _currentUser;
-  bool get isLoggedIn => _isLoggedIn;
+  bool get isLoggedIn => _currentUser != null;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  bool get isAdmin => _currentUser?.isAdmin ?? false;
 
   AuthProvider() {
-    _loadUserFromPrefs();
+    _initAuth();
   }
 
-  Future<void> _loadUserFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    _isLoggedIn = prefs.getBool(AppConstants.keyIsLoggedIn) ?? false;
-    
-    if (_isLoggedIn) {
-      _currentUser = UserModel(
-        id: prefs.getString(AppConstants.keyUserId) ?? '',
-        name: prefs.getString(AppConstants.keyUserName) ?? '',
-        email: prefs.getString(AppConstants.keyUserEmail) ?? '',
-        avatar: prefs.getString(AppConstants.keyUserAvatar) ?? '',
-        isAdmin: prefs.getBool(AppConstants.keyIsAdmin) ?? false,
-      );
+  Future<void> _initAuth() async {
+    if (!SupabaseService.available) return;
+
+    final session = SupabaseService.client.auth.currentSession;
+    if (session != null) {
+      await _loadUserProfile(session.user.id);
+    }
+
+    // Listen to auth state changes
+    SupabaseService.client.auth.onAuthStateChange.listen((data) {
+      final session = data.session;
+      if (session == null) {
+        _currentUser = null;
+        notifyListeners();
+      } else {
+        _loadUserProfile(session.user.id);
+      }
+    });
+  }
+
+  Future<void> _loadUserProfile(String userId) async {
+    try {
+      final response = await SupabaseService.client
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single();
+
+      _currentUser = UserModel.fromJson(response);
       notifyListeners();
+    } catch (e) {
+      if (kDebugMode) print('Error loading profile: $e');
     }
   }
 
-  Future<void> login(String name, String email, {bool isAdmin = false}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = DateTime.now().millisecondsSinceEpoch.toString();
-    
-    _currentUser = UserModel(
-      id: userId,
-      name: name,
-      email: email,
-      isAdmin: isAdmin,
-    );
-    
-    await prefs.setString(AppConstants.keyUserId, userId);
-    await prefs.setString(AppConstants.keyUserName, name);
-    await prefs.setString(AppConstants.keyUserEmail, email);
-    await prefs.setString(AppConstants.keyUserAvatar, '');
-    await prefs.setBool(AppConstants.keyIsAdmin, isAdmin);
-    await prefs.setBool(AppConstants.keyIsLoggedIn, true);
-    
-    _isLoggedIn = true;
-    notifyListeners();
+  /// Public method to reload user profile
+  Future<void> loadUserProfile() async {
+    if (_currentUser != null) {
+      await _loadUserProfile(_currentUser!.id);
+    }
   }
 
-  Future<void> updateProfile({String? name, String? email, String? avatar}) async {
-    if (_currentUser == null) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    
-    _currentUser = _currentUser!.copyWith(
-      name: name,
-      email: email,
-      avatar: avatar,
-    );
-    
-    if (name != null) await prefs.setString(AppConstants.keyUserName, name);
-    if (email != null) await prefs.setString(AppConstants.keyUserEmail, email);
-    if (avatar != null) await prefs.setString(AppConstants.keyUserAvatar, avatar);
-    
+  /// Sign in with Google OAuth
+  Future<bool> signInWithGoogle() async {
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
+    try {
+      final response = await SupabaseService.client.auth.signInWithOAuth(
+        Provider.google,
+        redirectTo: kIsWeb 
+            ? '${Uri.base.origin}/' 
+            : 'io.supabase.questforge://login-callback',
+        authScreenLaunchMode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      );
+      
+      if (kDebugMode) print('OAuth response: $response');
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      if (kDebugMode) print('Google sign in error: $e');
+      return false;
+    }
   }
 
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    
-    _currentUser = null;
-    _isLoggedIn = false;
+  /// Sign in with email and password (for admin)
+  Future<bool> signInWithEmail(String email, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await SupabaseService.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      if (response.user != null) {
+        await _loadUserProfile(response.user!.id);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
+      _isLoading = false;
+      _errorMessage = 'Login failed';
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      if (kDebugMode) print('Email sign in error: $e');
+      return false;
+    }
+  }
+
+  /// Update user profile
+  Future<bool> updateProfile({
+    String? name,
+    String? bio,
+    String? avatarUrl,
+  }) async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final updates = <String, dynamic>{};
+      if (name != null) updates['name'] = name;
+      if (bio != null) updates['bio'] = bio;
+      if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+
+      if (updates.isNotEmpty) {
+        updates['updated_at'] = DateTime.now().toIso8601String();
+
+        await SupabaseService.client
+            .from('profiles')
+            .update(updates)
+            .eq('id', _currentUser!.id);
+
+        await _loadUserProfile(_currentUser!.id);
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      if (kDebugMode) print('Update profile error: $e');
+      return false;
+    }
+  }
+
+  /// Sign out
+  Future<void> signOut() async {
+    try {
+      await SupabaseService.client.auth.signOut();
+      _currentUser = null;
+      _errorMessage = null;
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) print('Sign out error: $e');
+    }
+  }
+
+  void clearError() {
+    _errorMessage = null;
     notifyListeners();
   }
 }

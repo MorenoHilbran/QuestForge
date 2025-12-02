@@ -16,13 +16,37 @@ class AppConstants {
   static const double spacingL = 24.0;
   static const double spacingXL = 32.0;
   
-  // Roles
-  static const List<String> roles = [
-    'Frontend',
-    'Backend',
-    'Project Manager',
-    'UI/UX',
+  // User Roles
+  static const String roleAdmin = 'admin';
+  static const String roleUser = 'user';
+  
+  // Project Roles
+  static const List<String> projectRoles = [
+    'frontend',
+    'backend',
+    'uiux',
+    'pm',
+    'fullstack',
   ];
+  
+  static const Map<String, String> projectRoleLabels = {
+    'frontend': 'Frontend Developer',
+    'backend': 'Backend Developer',
+    'uiux': 'UI/UX Designer',
+    'pm': 'Project Manager',
+    'fullstack': 'Fullstack Developer',
+  };
+  
+  // Project Difficulty
+  static const List<String> projectDifficulty = [
+    'easy',
+    'medium',
+    'hard',
+  ];
+  
+  // Project Mode
+  static const String modeSolo = 'solo';
+  static const String modeMultiplayer = 'multiplayer';
   
   // Task Status
   static const List<String> taskStatus = [

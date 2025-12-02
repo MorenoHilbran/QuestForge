@@ -33,4 +33,10 @@ class AppColors {
   static const Color textPrimary = Colors.black;
   static const Color textSecondary = Color(0xFF666666);
   static const Color textLight = Colors.white;
+  
+  // Additional colors
+  static const Color shadow = Colors.black;
+  static const Color success = Color(0xFF51CF66);
+  static const Color error = Color(0xFFFF6B6B);
+  static const Color warning = Color(0xFFFFDA26);
 }

@@ -1,225 +1,228 @@
-# 📘 QuestForge - Project Management Mobile App
+# 🎮 QuestForge
 
-QuestForge is a mobile Project Management application with a **Neobrutalism** design style that delivers a visual, bold, and playful project management experience. The app facilitates team collaboration through solo/multiplayer project setup, role assignment, task management, and milestone tracking.
+**QuestForge** adalah aplikasi project management gamifikasi yang memungkinkan mahasiswa untuk bergabung dalam project solo atau tim dengan sistem role-based dan badge achievements.
 
-## ✨ Features
+![Flutter](https://img.shields.io/badge/Flutter-3.9.2-02569B?logo=flutter)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)
+![Dart](https://img.shields.io/badge/Dart-3.0+-0175C2?logo=dart)
+
+---
+
+## ✨ Fitur Utama
+
+### 👥 Role-Based System
+- **Admin**: Membuat dan mengelola project, menentukan mode (solo/team) dan required roles
+- **User**: Bergabung dalam project, memilih role (frontend, backend, UI/UX, PM, fullstack)
+
+### 🎯 Project Management
+- **Solo Mode**: Project individual dengan tasks yang ditentukan admin
+- **Multiplayer Mode**: Project tim dengan required roles yang ditentukan admin
+- Task management dengan status tracking (todo, in progress, done)
+- Progress tracking otomatis berdasarkan task completion
+- Priority levels (low, medium, high) untuk setiap task
+
+### 🏆 Gamification
+- Badge system berdasarkan project completion
+- Role-based badges (Frontend, Backend, UI/UX, PM achievements)
+- Solo & Team mode badges
+- Meta achievements (Versatile Adventurer, Quest Legend, dll)
 
 ### 🔐 Authentication
-- Simple login/registration with name and email
-- Admin and regular user roles
-- Persistent login state
+- Google OAuth login untuk user
+- Email/Password login untuk admin
+- Profile management (avatar, bio, display name)
 
-### 👔 Admin Features
-- **Create Projects**: Add new projects with name, description, deadline, and auto-generated project codes
-- **View All Projects**: See all projects with member count, progress, and statistics
-- **Project Management**: Manage all aspects of created projects
+### 🎨 Modern UI
+- Neobrutalism design (bold borders, vibrant colors, shadows)
+- Responsive layouts
+- Pull-to-refresh functionality
+- Real-time progress indicators
 
-### 👤 User Features
-- **Join Projects**: Join existing projects using project codes
-- **Solo/Multiplayer Mode**: 
-  - Solo: Handle all roles yourself
-  - Multiplayer: Choose a specific role (Frontend, Backend, PM, UI/UX)
-- **View My Projects**: See all projects you're part of
-- **Role-based Task View**: See only tasks relevant to your role
+---
 
-### 📊 Project Features
-- **Project Dashboard**: Visual overview with progress, members, milestones
-- **Task Management**: 
-  - Create tasks (PM only)
-  - Assign to specific roles
-  - Set priority (High, Medium, Low)
-  - Update status (To-do, In Progress, Review, Done)
-- **Milestone Tracking**:
-  - Create and manage milestones
-  - Automatic progress calculation based on task completion
-  - Visual progress bars
-
-### 🎨 Neobrutalism Design
-- Bold, contrasting colors (Yellow #FFDA26, Cyan #00E0E0, Pink #FF69AD)
-- Thick black borders (3-5px)
-- Hard shadows (4px offset)
-- Chunky, blocky UI elements
-- High contrast and visual hierarchy
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-- Flutter SDK (3.9.2 or higher)
-- Dart SDK
-- Android Studio / VS Code
-- An Android/iOS device or emulator
+- Flutter SDK ^3.9.2
+- Dart SDK ^3.0.0
+- Supabase account
+- Google Cloud Console (untuk OAuth)
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   cd questforge
-   ```
+1. **Clone repository**
+```bash
+git clone https://github.com/MorenoHilbran/QuestForge.git
+cd questforge
+```
 
 2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
+```bash
+flutter pub get
+```
 
-3. **Run the app**
-   ```bash
-   flutter run
-   ```
+3. **Setup environment variables**
+```bash
+cp .env.example .env
+```
 
-## 📱 How to Use
+Edit `.env` dengan kredensial Supabase kamu:
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+```
 
-### First Time Setup
-1. **Launch the app**
-2. **Create an account**:
-   - Enter your name and email
-   - Check "Login as Admin" if you want to create projects
-   - Or leave unchecked to join existing projects
-3. **Click "Get Started"**
+4. **Setup Database**
 
-### For Admins
-1. **Create a Project**:
-   - From Home, click "Manage Projects"
-   - Click "Create New Project"
-   - Fill in project details (name, description, deadline)
-   - Note the generated project code
-2. **Share the code** with team members
-3. **Manage Tasks**:
-   - Open a project
-   - Click "View Tasks"
-   - Add tasks and assign to roles
-4. **Track Milestones**:
-   - Click "View Milestones"
-   - Add milestones with target dates
+Buka Supabase Dashboard → SQL Editor, copy paste dan run:
+```sql
+DATABASE_SCHEMA.sql
+```
 
-### For Users
-1. **Join a Project**:
-   - From Home, click "My Projects"
-   - Click "Join Project"
-   - Enter the project code
-   - Choose Solo mode or select your role
-2. **View and Update Tasks**:
-   - Open your project
-   - Click "View Tasks"
-   - See tasks assigned to your role
-   - Click on a task to update its status
-3. **Track Progress**:
-   - View project dashboard for overall progress
-   - Check milestone progress
+File ini sudah include:
+- Semua tabel (profiles, projects, user_projects, tasks, milestones, badges, dll)
+- RLS policies untuk security
+- Functions untuk badge awarding & progress calculation
+- Seed data untuk badge definitions
 
-## 🏗️ Project Structure
+5. **Setup Google OAuth** (Optional, untuk user login)
+
+a. Buat project di [Google Cloud Console](https://console.cloud.google.com)
+
+b. Enable Google+ API
+
+c. Buat OAuth 2.0 Client ID:
+   - Application type: Web application
+   - Authorized JavaScript origins: `http://localhost:3000`
+   - Authorized redirect URIs: 
+     - `http://localhost:3000/`
+     - `https://your-project.supabase.co/auth/v1/callback`
+
+d. Update di Supabase Dashboard:
+   - Authentication → Providers → Google
+   - Paste Client ID & Client Secret
+   - Redirect URLs: `http://localhost:3000/**`
+
+6. **Run aplikasi**
+```bash
+# Web (recommended for development)
+flutter run -d chrome --web-port=3000 --web-hostname=localhost
+
+# Atau gunakan script
+./run_web.ps1
+```
+
+---
+
+## 📂 Struktur Project
 
 ```
 lib/
 ├── core/
-│   ├── constants/
-│   │   └── app_constants.dart
-│   └── theme/
-│       ├── app_colors.dart
-│       └── app_theme.dart
+│   ├── constants/       # App constants (colors, spacing, roles)
+│   └── theme/          # Theme configuration
 ├── data/
-│   └── models/
-│       ├── activity_log_model.dart
-│       ├── milestone_model.dart
-│       ├── project_model.dart
-│       ├── project_user_model.dart
-│       ├── task_model.dart
-│       └── user_model.dart
-├── providers/
-│   ├── auth_provider.dart
-│   └── project_provider.dart
+│   └── models/         # Data models (User, Project, Badge, dll)
+├── providers/          # State management (AuthProvider)
 ├── screens/
-│   ├── admin/
-│   │   ├── add_project_screen.dart
-│   │   └── admin_projects_screen.dart
-│   ├── auth/
-│   │   └── login_screen.dart
-│   ├── home/
-│   │   └── home_screen.dart
-│   ├── project/
-│   │   ├── milestones_screen.dart
-│   │   ├── project_detail_screen.dart
-│   │   └── tasks_screen.dart
-│   └── user/
-│       ├── join_project_screen.dart
-│       └── user_projects_screen.dart
-├── widgets/
-│   └── common/
-│       ├── neo_button.dart
-│       ├── neo_card.dart
-│       ├── neo_progress_bar.dart
-│       └── neo_text_field.dart
-└── main.dart
+│   ├── admin/          # Admin screens (ManageProjects)
+│   ├── auth/           # Login screen
+│   ├── home/           # Home screen (browse projects)
+│   ├── profile/        # Profile & edit profile
+│   └── projects/       # User projects & detail
+├── services/           # Supabase service
+└── widgets/            # Reusable widgets (NeoButton, NeoCard, dll)
 ```
 
-## 🎯 Key Technologies
+---
 
-- **Flutter**: Cross-platform mobile framework
-- **Provider**: State management
-- **SharedPreferences**: Local data persistence
-- **UUID**: Unique ID generation
-- **Intl**: Date formatting
+## 🗄️ Database Schema
+
+### Core Tables
+- **profiles** - User profiles (synced dengan Supabase Auth)
+- **projects** - Project definitions dengan mode & required_roles
+- **user_projects** - Project participation dengan role & progress
+- **tasks** - Tasks untuk setiap project
+- **milestones** - Project milestones (optional)
+- **badge_definitions** - Badge types & requirements
+- **activity_logs** - Activity tracking
+
+### Key Features
+- Row Level Security (RLS) enabled untuk semua tables
+- Auto-update timestamps dengan triggers
+- Badge awarding function dengan automatic calculation
+- Progress calculation based on task completion
+
+---
+
+## 🎯 User Flow
+
+### Admin Flow
+1. Login dengan email/password
+2. Navigate ke "Manage" tab
+3. Create project:
+   - Set title, description, difficulty
+   - Choose mode: Solo atau Multiplayer
+   - Select required roles (untuk team projects)
+4. Users akan melihat project di Home screen
+5. Setelah user join, admin bisa add tasks di project detail
+
+### User Flow
+1. Login dengan Google OAuth
+2. Browse projects di Home screen
+3. Filter by difficulty (easy, medium, hard)
+4. Click "Join Project"
+5. Pilih role (jika team project)
+6. Navigate ke "Projects" tab untuk melihat joined projects
+7. Click project → view tasks → mark tasks as complete
+8. Earn badges berdasarkan achievement!
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Flutter (Dart)
+- **Backend**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth + Google OAuth
+- **State Management**: Provider
+- **Database**: PostgreSQL dengan Supabase
+- **Hosting**: Web (deployable ke Vercel, Netlify, Firebase Hosting)
+
+---
 
 ## 🎨 Design System
 
 ### Colors
-- **Primary (Yellow)**: `#FFDA26` - Main actions, highlights
-- **Secondary (Cyan)**: `#00E0E0` - Secondary actions, info
-- **Accent (Pink)**: `#FF69AD` - Call-to-action, important elements
-- **Background**: `#F5F5F5` - App background
+- Primary: `#FFD93D` (Yellow)
+- Secondary: `#A6FF96` (Green)
+- Error: `#FF6B9D` (Pink)
+- Warning: `#FFA500` (Orange)
+- Success: `#6BCF7F` (Green)
+- Border: `#000000` (Black, 3px)
 
-### Role Colors
-- **Frontend**: Purple `#6B5CE7`
-- **Backend**: Green `#00D4AA`
-- **Project Manager**: Red `#FF6B6B`
-- **UI/UX**: Orange `#FF8C42`
+### Typography
+- Font: System default (bold weights)
+- Headings: 900 weight
+- Body: 400-700 weight
 
-### Status Colors
-- **To-do**: Light Gray `#E5E5E5`
-- **In Progress**: Yellow `#FFDA26`
-- **Review**: Cyan `#00E0E0`
-- **Done**: Green `#51CF66`
-
-## 🔄 State Management
-
-The app uses Provider for state management with two main providers:
-
-1. **AuthProvider**: Manages user authentication and session
-2. **ProjectProvider**: Manages all project-related data (projects, tasks, milestones, activity logs)
-
-## 💾 Data Persistence
-
-- User session data is stored using SharedPreferences
-- App data is stored in-memory (resets on app restart)
-- For production, consider integrating Firebase or a backend API
-
-## 🚧 Future Enhancements
-
-- [ ] Backend integration (Firebase/Node.js)
-- [ ] Real-time updates
-- [ ] Push notifications
-- [ ] File attachments for tasks
-- [ ] Comments and discussions
-- [ ] Team chat
-- [ ] Export project reports
-- [ ] Dark mode option
-- [ ] Custom project themes
-
-## 📝 License
-
-This project is created for educational purposes.
-
-## 👥 Target Users
-
-- Students working on group projects / capstone projects
-- Freelancers
-- Small teams needing simple PM tools
-- Beginner Project Managers
-
-## 🤝 Contributing
-
-This is an educational project. Feel free to fork and enhance it for your own learning!
+### Components
+- NeoCard: White background, 3px black border, 4px shadow
+- NeoButton: Colored background, 3px border, elevation effect
+- NeoTextField: Bordered input dengan rounded corners
 
 ---
 
-**Built with ❤️ using Flutter and Neobrutalism design principles**
-# QuestForge
+## 📱 Screenshots
+
+> Coming soon - Add screenshots of key screens
+
+---
+
+
+## 👨‍💻 Developer
+
+**Moreno Hilbran**
+- GitHub: [@MorenoHilbran](https://github.com/MorenoHilbran)
+- Repository: [QuestForge](https://github.com/MorenoHilbran/QuestForge)
+
+---

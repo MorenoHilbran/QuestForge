@@ -1,12 +1,27 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
-import 'providers/project_provider.dart';
 import 'screens/auth/login_screen.dart';
-import 'screens/home/home_screen.dart';
+import 'screens/main_navigation.dart';
+import 'services/supabase_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables from .env (if present)
+  try {
+    await dotenv.load(fileName: '.env');
+    if (kDebugMode) debugPrint('Loaded .env file');
+  } catch (e) {
+    if (kDebugMode) debugPrint('No .env file found or failed to load. Using compile-time constants.');
+  }
+
+  // Initialize Supabase (will no-op if env vars missing)
+  await SupabaseService.init();
+
   runApp(const MainApp());
 }
 
@@ -18,7 +33,6 @@ class MainApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => ProjectProvider()),
       ],
       child: MaterialApp(
         title: 'QuestForge',
@@ -27,7 +41,7 @@ class MainApp extends StatelessWidget {
         home: Consumer<AuthProvider>(
           builder: (context, authProvider, _) {
             if (authProvider.isLoggedIn) {
-              return const HomeScreen();
+              return const MainNavigation();
             }
             return const LoginScreen();
           },
