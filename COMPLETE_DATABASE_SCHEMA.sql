@@ -168,6 +168,11 @@ CREATE POLICY "Users can insert their own profile"
   TO authenticated
   WITH CHECK (auth.uid() = id OR auth.jwt()->>'role' = 'service_role');
 
+CREATE POLICY "Anon users can insert profile during signup"
+  ON profiles FOR INSERT
+  TO anon
+  WITH CHECK (true);
+
 CREATE POLICY "Users can update their own profile"
   ON profiles FOR UPDATE
   TO authenticated
@@ -290,24 +295,28 @@ CREATE POLICY "Users can view their own activity"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, name, email, avatar_url, role, created_at, updated_at)
-  VALUES (
-    NEW.id,
-    COALESCE(
-      NEW.raw_user_meta_data->>'full_name',
-      NEW.raw_user_meta_data->>'name',
-      SPLIT_PART(NEW.email, '@', 1)
-    ),
-    NEW.email,
-    COALESCE(
-      NEW.raw_user_meta_data->>'avatar_url',
-      NEW.raw_user_meta_data->>'picture'
-    ),
-    'user',
-    NOW(),
-    NOW()
-  )
-  ON CONFLICT (id) DO NOTHING;
+  -- Only insert if email is not null (required field)
+  IF NEW.email IS NOT NULL THEN
+    INSERT INTO public.profiles (id, name, email, avatar_url, role, created_at, updated_at)
+    VALUES (
+      NEW.id,
+      COALESCE(
+        NEW.raw_user_meta_data->>'full_name',
+        NEW.raw_user_meta_data->>'name',
+        SPLIT_PART(NEW.email, '@', 1),
+        'User'
+      ),
+      NEW.email,
+      COALESCE(
+        NEW.raw_user_meta_data->>'avatar_url',
+        NEW.raw_user_meta_data->>'picture'
+      ),
+      'user',
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
   
   RETURN NEW;
 END;

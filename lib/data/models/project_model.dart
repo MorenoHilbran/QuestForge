@@ -9,6 +9,7 @@ class ProjectModel {
   final DateTime updatedAt;
   final String mode; // 'solo' or 'multiplayer'
   final List<String>? requiredRoles; // For team projects
+  final Map<String, dynamic>? roleLimits; // Max count for each role
   final List<Map<String, dynamic>>? joinedUsers; // Users who joined the project
   final bool isCompleted; // If any user has completed this project
 
@@ -23,6 +24,7 @@ class ProjectModel {
     required this.updatedAt,
     this.mode = 'solo',
     this.requiredRoles,
+    this.roleLimits,
     this.joinedUsers,
     this.isCompleted = false,
   });
@@ -39,6 +41,7 @@ class ProjectModel {
       'updated_at': updatedAt.toIso8601String(),
       'mode': mode,
       'required_roles': requiredRoles,
+      'role_limits': roleLimits,
     };
   }
 
@@ -51,6 +54,17 @@ class ProjectModel {
           .where((up) => up['profiles'] != null)
           .map((up) => up['profiles'] as Map<String, dynamic>)
           .toList();
+    }
+
+    // Parse role_limits with better error handling
+    Map<String, dynamic>? roleLimits;
+    if (json['role_limits'] != null) {
+      try {
+        roleLimits = Map<String, dynamic>.from(json['role_limits'] as Map);
+      } catch (e) {
+        print('Error parsing role_limits for project ${json['title']}: $e');
+        roleLimits = null;
+      }
     }
 
     return ProjectModel(
@@ -70,6 +84,7 @@ class ProjectModel {
       requiredRoles: json['required_roles'] != null
           ? List<String>.from(json['required_roles'])
           : null,
+      roleLimits: roleLimits,
       joinedUsers: users,
       isCompleted: json['isCompleted'] ?? false,
     );
@@ -86,6 +101,7 @@ class ProjectModel {
     DateTime? updatedAt,
     String? mode,
     List<String>? requiredRoles,
+    Map<String, dynamic>? roleLimits,
     List<Map<String, dynamic>>? joinedUsers,
   }) {
     return ProjectModel(
@@ -99,6 +115,7 @@ class ProjectModel {
       updatedAt: updatedAt ?? this.updatedAt,
       mode: mode ?? this.mode,
       requiredRoles: requiredRoles ?? this.requiredRoles,
+      roleLimits: roleLimits,
       joinedUsers: joinedUsers ?? this.joinedUsers,
     );
   }

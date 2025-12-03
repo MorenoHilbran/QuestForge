@@ -984,24 +984,25 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   /// Check if current user can add tasks
   /// Rules:
   /// - Admin can always add tasks
-  /// - In solo mode, user can add tasks
+  /// - In solo mode, ONLY admin can add tasks (users can only complete tasks)
   /// - In multiplayer mode:
   ///   - If project has PM, only PM can add tasks
   ///   - If project has no PM, admin can add tasks
   bool _canAddTask() {
     final isSoloMode = widget.project['mode'] == 'solo';
     
-    // Admin can always add if no PM exists
-    if (_isAdmin) {
-      return isSoloMode || !_hasProjectManager;
+    // Solo mode - ONLY admin can add tasks
+    if (isSoloMode) {
+      return _isAdmin;
     }
     
-    // Solo mode - user can add
-    if (isSoloMode) {
+    // Multiplayer mode
+    // Admin can add if no PM exists
+    if (_isAdmin && !_hasProjectManager) {
       return true;
     }
     
-    // Multiplayer mode - only PM can add
+    // PM can add in multiplayer
     return _isPM;
   }
 }

@@ -56,7 +56,18 @@ class AuthProvider extends ChangeNotifier {
             .eq('id', userId)
             .single();
 
-        if (kDebugMode) print('Profile data: $response');
+        if (kDebugMode) {
+          print('Profile loaded successfully for user: $userId');
+          print('Profile data keys: ${response.keys}');
+        }
+        
+        // Validate essential fields before parsing
+        if (response['id'] == null) {
+          throw Exception('Profile ID is null');
+        }
+        if (response['email'] == null) {
+          throw Exception('Profile email is null');
+        }
         
         _currentUser = UserModel.fromJson(response);
         notifyListeners();
@@ -72,19 +83,32 @@ class AuthProvider extends ChangeNotifier {
           try {
             final user = SupabaseService.client.auth.currentUser;
             if (user != null) {
+              // Ensure email is not empty
               final email = user.email ?? '';
-              final name = user.userMetadata?['full_name'] ?? 
-                           user.userMetadata?['name'] ?? 
-                           email.split('@').first;
-              final avatarUrl = user.userMetadata?['avatar_url'] ?? 
-                               user.userMetadata?['picture'];
+              if (email.isEmpty) {
+                throw Exception('Cannot create profile: email is empty');
+              }
               
-              if (kDebugMode) print('Creating new profile for user: $email');
+              // Get name with fallback
+              final name = user.userMetadata?['full_name']?.toString() ?? 
+                           user.userMetadata?['name']?.toString() ?? 
+                           email.split('@').first;
+              
+              // Ensure name is not empty
+              final finalName = name.isEmpty ? 'User' : name;
+              
+              final avatarUrl = user.userMetadata?['avatar_url']?.toString() ?? 
+                               user.userMetadata?['picture']?.toString();
+              
+              if (kDebugMode) {
+                print('Creating new profile for user: $email');
+                print('Name: $finalName, Avatar: $avatarUrl');
+              }
               
               // Use upsert to avoid conflicts
               await SupabaseService.client.from('profiles').upsert({
                 'id': userId,
-                'name': name,
+                'name': finalName,
                 'email': email,
                 'avatar_url': avatarUrl,
                 'role': 'user',
@@ -93,7 +117,10 @@ class AuthProvider extends ChangeNotifier {
               if (kDebugMode) print('Profile created successfully');
             }
           } catch (createError) {
-            if (kDebugMode) print('Error creating profile: $createError');
+            if (kDebugMode) {
+              print('Error creating profile: $createError');
+              print('Stack trace: ${StackTrace.current}');
+            }
           }
         }
         

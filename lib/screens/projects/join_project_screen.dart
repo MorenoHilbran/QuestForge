@@ -267,7 +267,7 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
                         child: NeoCard(
                           color: isFull 
                               ? Colors.grey.shade300 
-                              : (isSelected ? AppColors.primary : Colors.white),
+                              : (isSelected ? _getRoleColor(role) : Colors.white),
                           child: Row(
                             children: [
                               Icon(
@@ -400,6 +400,23 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
         return 'Work on both frontend and backend development';
       default:
         return 'Contribute to the project';
+    }
+  }
+
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'frontend':
+        return const Color(0xFF4A90E2); // Blue
+      case 'backend':
+        return const Color(0xFF50C878); // Green
+      case 'uiux':
+        return const Color(0xFFE94B3C); // Red/Pink
+      case 'pm':
+        return const Color(0xFFF5A623); // Orange
+      case 'fullstack':
+        return const Color(0xFF9013FE); // Purple
+      default:
+        return AppColors.primary; // Default yellow
     }
   }
 }

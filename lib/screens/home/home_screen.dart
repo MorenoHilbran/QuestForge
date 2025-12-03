@@ -95,17 +95,36 @@ class _HomeScreenState extends State<HomeScreen> {
     // Solo mode = 1 user
     if (project.mode == 'solo') return 1;
     
-    // Multiplayer: count required roles or default to 6
-    if (project.requiredRoles != null && project.requiredRoles!.isNotEmpty) {
-      return project.requiredRoles!.length;
+    // Multiplayer: HANYA gunakan role_limits yang diset admin
+    // Jangan ada fallback/estimasi, karena max members HARUS dari admin
+    if (project.roleLimits != null && project.roleLimits!.isNotEmpty) {
+      int total = 0;
+      project.roleLimits!.forEach((role, limit) {
+        // Handle both int and String types from JSON
+        int limitValue = 0;
+        if (limit is int) {
+          limitValue = limit;
+        } else if (limit is String) {
+          limitValue = int.tryParse(limit) ?? 0;
+        } else if (limit is double) {
+          limitValue = limit.toInt();
+        }
+        total += limitValue;
+      });
+      
+      return total;
     }
     
-    return 6; // Default max for multiplayer
+    // Jika role_limits belum diset, return 0
+    // Ini menandakan admin belum mengkonfigurasi max members
+    return 0;
   }
 
   Widget _buildJoinButton(ProjectModel project) {
     final isJoined = _userJoinedProjects[project.id] == true;
-    final isFull = (project.joinedUsers?.length ?? 0) >= _getMaxMembers(project);
+    final maxMembers = _getMaxMembers(project);
+    final currentMembers = project.joinedUsers?.length ?? 0;
+    final isFull = maxMembers > 0 && currentMembers >= maxMembers;
     final isCompleted = project.isCompleted;
 
     // Already joined
@@ -326,6 +345,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _selectedDifficulty == value;
+    
+    // Get color based on difficulty
+    Color chipColor;
+    if (value == 'all') {
+      chipColor = isSelected ? AppColors.primary : Colors.white;
+    } else {
+      switch (value) {
+        case 'easy':
+          chipColor = isSelected ? AppColors.success : Colors.white;
+          break;
+        case 'medium':
+          chipColor = isSelected ? AppColors.warning : Colors.white;
+          break;
+        case 'hard':
+          chipColor = isSelected ? AppColors.error : Colors.white;
+          break;
+        default:
+          chipColor = isSelected ? AppColors.primary : Colors.white;
+      }
+    }
+    
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -340,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
           vertical: AppConstants.spacingS,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
+          color: chipColor,
           border: Border.all(
             color: AppColors.border,
             width: AppConstants.borderWidth,
@@ -572,7 +612,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           const Icon(Icons.people, size: 16, color: Colors.black),
                           const SizedBox(width: 4),
                           Text(
-                            '${project.joinedUsers?.length ?? 0}/${_getMaxMembers(project)}',
+                            _getMaxMembers(project) > 0
+                                ? '${project.joinedUsers?.length ?? 0}/${_getMaxMembers(project)}'
+                                : '${project.joinedUsers?.length ?? 0}/?',
                             style: const TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
