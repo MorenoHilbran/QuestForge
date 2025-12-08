@@ -48,27 +48,111 @@ class AppConstants {
   static const String modeSolo = 'solo';
   static const String modeMultiplayer = 'multiplayer';
   
-  // Task Status
+  // Task Status (V2 Schema)
+  static const String taskTodo = 'todo';
+  static const String taskInProgress = 'in_progress';
+  static const String taskDone = 'done';
+  
   static const List<String> taskStatus = [
-    'To-do',
-    'In Progress',
-    'Review',
-    'Done',
+    taskTodo,
+    taskInProgress,
+    taskDone,
   ];
   
-  // Task Priority
+  static const Map<String, String> taskStatusLabels = {
+    'todo': 'To Do',
+    'in_progress': 'In Progress',
+    'done': 'Done',
+  };
+  
+  // Task Priority (V2 Schema)
+  static const String priorityLow = 'low';
+  static const String priorityMedium = 'medium';
+  static const String priorityHigh = 'high';
+  
   static const List<String> taskPriority = [
-    'High',
-    'Medium',
-    'Low',
+    priorityLow,
+    priorityMedium,
+    priorityHigh,
   ];
   
-  // Milestone Status
-  static const List<String> milestoneStatus = [
-    'Not Started',
-    'In Progress',
-    'Completed',
+  static const Map<String, String> taskPriorityLabels = {
+    'low': 'Low',
+    'medium': 'Medium',
+    'high': 'High',
+  };
+  
+  // User Project Status (V2 Schema)
+  static const String statusInProgress = 'in_progress';
+  static const String statusCompleted = 'completed';
+  static const String statusDropped = 'dropped';
+  
+  // Approval Status (V2 Schema - NEW!)
+  static const String approvalPending = 'pending';
+  static const String approvalApproved = 'approved';
+  static const String approvalRejected = 'rejected';
+  
+  static const List<String> approvalStatuses = [
+    approvalPending,
+    approvalApproved,
+    approvalRejected,
   ];
+  
+  static const Map<String, String> approvalStatusLabels = {
+    'pending': 'Pending Approval',
+    'approved': 'Approved',
+    'rejected': 'Rejected',
+  };
+  
+  // Activity Actions (V2 Schema - NEW!)
+  static const String actionProjectCreated = 'project_created';
+  static const String actionProjectUpdated = 'project_updated';
+  static const String actionProjectDeleted = 'project_deleted';
+  static const String actionUserJoined = 'user_joined';
+  static const String actionUserApproved = 'user_approved';
+  static const String actionUserRejected = 'user_rejected';
+  static const String actionUserLeft = 'user_left';
+  static const String actionTaskCreated = 'task_created';
+  static const String actionTaskUpdated = 'task_updated';
+  static const String actionTaskCompleted = 'task_completed';
+  static const String actionTaskClaimed = 'task_claimed';
+  static const String actionMilestoneCreated = 'milestone_created';
+  static const String actionMilestoneCompleted = 'milestone_completed';
+  static const String actionBadgeEarned = 'badge_earned';
+  
+  static const List<String> activityActions = [
+    actionProjectCreated,
+    actionProjectUpdated,
+    actionProjectDeleted,
+    actionUserJoined,
+    actionUserApproved,
+    actionUserRejected,
+    actionUserLeft,
+    actionTaskCreated,
+    actionTaskUpdated,
+    actionTaskCompleted,
+    actionTaskClaimed,
+    actionMilestoneCreated,
+    actionMilestoneCompleted,
+    actionBadgeEarned,
+  ];
+  
+  static const Map<String, String> activityActionLabels = {
+    'project_created': 'Created Project',
+    'project_updated': 'Updated Project',
+    'project_deleted': 'Deleted Project',
+    'user_joined': 'Joined Project',
+    'user_approved': 'Approved User',
+    'user_rejected': 'Rejected User',
+    'user_left': 'Left Project',
+    'task_created': 'Created Task',
+    'task_updated': 'Updated Task',
+    'task_completed': 'Completed Task',
+    'task_claimed': 'Claimed Task',
+    'milestone_created': 'Created Milestone',
+    'milestone_completed': 'Completed Milestone',
+    'badge_earned': 'Earned Badge',
+  };
   
   // SharedPreferences Keys
   static const String keyUserId = 'user_id';

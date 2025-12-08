@@ -2,10 +2,12 @@ class ProjectUserModel {
   final String id;
   final String projectId;
   final String userId;
-  final String role; // 'frontend', 'backend', 'uiux', 'pm', 'fullstack'
-  final String mode; // 'solo' or 'multiplayer'
-  final double progress; // 0-100
-  final String status; // 'in_progress', 'completed', 'abandoned'
+  final String role; // 'solo', 'frontend', 'backend', 'uiux', 'pm', 'fullstack'
+  final String approvalStatus; // V2: 'pending', 'approved', 'rejected'
+  final String? approvedBy; // V2: User ID who approved
+  final DateTime? approvedAt; // V2: When approved
+  final double progress; // 0-100 (auto-calculated in V2)
+  final String status; // 'in_progress', 'completed', 'dropped'
   final DateTime joinedAt;
   final DateTime? completedAt;
 
@@ -14,7 +16,9 @@ class ProjectUserModel {
     required this.projectId,
     required this.userId,
     required this.role,
-    this.mode = 'multiplayer',
+    this.approvalStatus = 'approved',
+    this.approvedBy,
+    this.approvedAt,
     this.progress = 0.0,
     this.status = 'in_progress',
     required this.joinedAt,
@@ -27,7 +31,9 @@ class ProjectUserModel {
       'project_id': projectId,
       'user_id': userId,
       'role': role,
-      'mode': mode,
+      'approval_status': approvalStatus,
+      'approved_by': approvedBy,
+      'approved_at': approvedAt?.toIso8601String(),
       'progress': progress,
       'status': status,
       'joined_at': joinedAt.toIso8601String(),
@@ -41,7 +47,11 @@ class ProjectUserModel {
       projectId: json['project_id'] ?? '',
       userId: json['user_id'] ?? '',
       role: json['role'] ?? '',
-      mode: json['mode'] ?? 'multiplayer',
+      approvalStatus: json['approval_status'] ?? 'approved',
+      approvedBy: json['approved_by'],
+      approvedAt: json['approved_at'] != null
+          ? DateTime.parse(json['approved_at'])
+          : null,
       progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? 'in_progress',
       joinedAt: json['joined_at'] != null
@@ -58,7 +68,9 @@ class ProjectUserModel {
     String? projectId,
     String? userId,
     String? role,
-    String? mode,
+    String? approvalStatus,
+    String? approvedBy,
+    DateTime? approvedAt,
     double? progress,
     String? status,
     DateTime? joinedAt,
@@ -69,7 +81,9 @@ class ProjectUserModel {
       projectId: projectId ?? this.projectId,
       userId: userId ?? this.userId,
       role: role ?? this.role,
-      mode: mode ?? this.mode,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+      approvedBy: approvedBy ?? this.approvedBy,
+      approvedAt: approvedAt ?? this.approvedAt,
       progress: progress ?? this.progress,
       status: status ?? this.status,
       joinedAt: joinedAt ?? this.joinedAt,

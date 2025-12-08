@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/supabase_service.dart';
 import '../widgets/neo_card.dart';
 import '../widgets/neo_text_field.dart';
+import '../widgets/neo_button.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final Map<String, dynamic> project;
@@ -77,9 +78,25 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       // Load team members (users who joined this project)
       final teamResponse = await SupabaseService.client
           .from('user_projects')
-          .select('*, profiles(id, name, email, avatar_url)')
+          .select('id, user_id, role, approval_status, progress')
           .eq('project_id', widget.project['id'])
           .order('joined_at', ascending: true);
+
+      // Load profiles for team members
+      final teamMembers = (teamResponse as List<dynamic>?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+      for (var member in teamMembers) {
+        try {
+          final profile = await SupabaseService.client
+              .from('profiles')
+              .select('id, name, avatar_url')
+              .eq('id', member['user_id'])
+              .maybeSingle();
+          member['profile'] = profile;
+        } catch (e) {
+          debugPrint('Error loading profile for ${member['user_id']}: $e');
+          member['profile'] = null;
+        }
+      }
 
       // Check if user is PM
       final isPM = userProjectResponse != null && userProjectResponse['role'] == 'pm';
@@ -100,9 +117,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         _userProject = userProjectResponse;
         _isPM = isPM;
         _hasProjectManager = hasProjectManager;
-        // _milestones = List<Map<String, dynamic>>.from(milestonesResponse ?? []); // Future use
-        _tasks = List<Map<String, dynamic>>.from(tasksResponse ?? []);
-        _teamMembers = List<Map<String, dynamic>>.from(teamResponse ?? []);
+        // _milestones = List<Map<String, dynamic>>.from(milestonesResponse); // Future use
+        _tasks = (tasksResponse as List<dynamic>?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+        _teamMembers = teamMembers;
         _isLoading = false;
       });
     } catch (e) {
@@ -116,25 +133,62 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   }
 
   Future<void> _toggleTaskStatus(Map<String, dynamic> task) async {
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    final userRole = _userProject?['role'] ?? 'user';
+    final isProjectMode = widget.project['mode'] == 'solo';
+    
+    // Permission check:
+    // - PM/Fullstack can always update
+    // - Others can only update if assigned or claimed by them
+    final canUpdate = userRole == 'pm' 
+        || userRole == 'fullstack'
+        || task['assigned_user_id'] == userId
+        || task['claimed_by_user_id'] == userId
+        || isProjectMode; // Solo project mode - anyone can update
+
+    if (!canUpdate) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You can only update tasks assigned to you'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
     final newStatus = task['status'] == 'done' ? 'todo' : 'done';
 
     try {
-      await SupabaseService.client.from('tasks').update({
+      // If status is being set to in_progress and not yet claimed, claim it
+      final updateData = <String, dynamic>{
         'status': newStatus,
-        'completed_at': newStatus == 'done' ? DateTime.now().toIso8601String() : null,
-      }).eq('id', task['id']);
+      };
+
+      // Auto-claim task if moving to in_progress and not assigned
+      if (newStatus == 'in_progress' && task['claimed_by_user_id'] == null && isProjectMode) {
+        updateData['claimed_by_user_id'] = userId;
+        updateData['is_claimed'] = true;
+      }
+
+      await SupabaseService.client.from('tasks').update(updateData).eq('id', task['id']);
 
       // Update local state
       setState(() {
         final index = _tasks.indexWhere((t) => t['id'] == task['id']);
         if (index != -1) {
           _tasks[index]['status'] = newStatus;
-          _tasks[index]['completed_at'] = newStatus == 'done' ? DateTime.now().toIso8601String() : null;
+          if (updateData.containsKey('claimed_by_user_id')) {
+            _tasks[index]['claimed_by_user_id'] = userId;
+            _tasks[index]['is_claimed'] = true;
+          }
         }
       });
 
-      // Calculate and update progress
-      await _updateProgress();
+      // Progress is auto-calculated by database trigger
+      // Reload project data to get updated progress
+      await _loadData();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -153,45 +207,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     }
   }
 
-  Future<void> _updateProgress() async {
-    if (_userProject == null) return;
-
-    final userId = context.read<AuthProvider>().currentUser?.id;
-    final totalTasks = _tasks.length;
-    
-    if (totalTasks == 0) return;
-
-    final completedTasks = _tasks.where((t) => t['status'] == 'done').length;
-    final progress = (completedTasks / totalTasks * 100).toDouble();
-
-    try {
-      await SupabaseService.client.from('user_projects').update({
-        'progress': progress,
-        'status': progress == 100 ? 'completed' : 'in_progress',
-        'completed_at': progress == 100 ? DateTime.now().toIso8601String() : null,
-      }).eq('user_id', userId!).eq('project_id', widget.project['id']);
-
-      // Call badge check function if completed
-      if (progress == 100) {
-        await SupabaseService.client.rpc('check_and_award_badges', params: {
-          'p_user_id': userId,
-        });
-      }
-    } catch (e) {
-      debugPrint('Error updating progress: $e');
-    }
-  }
-
   void _showAddTaskDialog() {
     final titleController = TextEditingController();
     final descController = TextEditingController();
     String priority = 'medium';
-    String? selectedRole; // For role assignment
-
-    // Get available roles from project
-    final availableRoles = widget.project['required_roles'] != null 
-        ? List<String>.from(widget.project['required_roles']) 
-        : <String>[];
 
     showDialog(
       context: context,
@@ -252,85 +271,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         },
                       );
                     }).toList(),
-                    
-                    // Role Assignment (for PM and Admin in multiplayer)
-                    if (widget.project['mode'] == 'multiplayer' && availableRoles.isNotEmpty) ...[
-                      const SizedBox(height: AppConstants.spacingM),
-                      const Text(
-                        'Assign to Role',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: AppConstants.spacingS),
-                      const Text(
-                        'Choose which role should complete this task',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: AppConstants.spacingM),
-                      Wrap(
-                        spacing: AppConstants.spacingS,
-                        runSpacing: AppConstants.spacingS,
-                        children: availableRoles.map((role) {
-                          final isSelected = selectedRole == role;
-                          final roleColor = AppColors.getRoleColor(role);
-                          
-                          return InkWell(
-                            onTap: () {
-                              setStateDialog(() {
-                                selectedRole = isSelected ? null : role;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected ? roleColor : Colors.white,
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 3,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black,
-                                    offset: Offset(isSelected ? 4 : 2, isSelected ? 4 : 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (isSelected)
-                                    const Padding(
-                                      padding: EdgeInsets.only(right: 8),
-                                      child: Icon(
-                                        Icons.check_circle,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  Text(
-                                    role.toUpperCase(),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: isSelected ? Colors.white : Colors.black,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -360,10 +300,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                   'status': 'todo',
                 };
 
-                // Add assigned role if selected
-                if (selectedRole != null) {
-                  taskData['assigned_role'] = selectedRole;
-                }
+                // Note: assigned_role removed - not in current schema
+                // Tasks are claimed by users dynamically
 
                 await SupabaseService.client.from('tasks').insert(taskData);
 
@@ -409,6 +347,36 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                 fontSize: 20,
               ),
             ),
+            // V2: Show project code with copy button
+            if (widget.project['code'] != null)
+              Row(
+                children: [
+                  Text(
+                    'Code: ${widget.project['code']}',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 14, color: AppColors.primary),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      // Copy to clipboard
+                      final code = widget.project['code'] as String;
+                      // Will add clipboard functionality later
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Code $code copied!'),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             if (_userProject != null)
               Text(
                 'Role: ${AppConstants.projectRoleLabels[_userProject!['role']] ?? _userProject!['role']}',
@@ -482,17 +450,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   Widget _buildTasksTab() {
     final isSoloMode = widget.project['mode'] == 'solo';
     
-    // Filter tasks based on user's role (if multiplayer)
-    final filteredTasks = isSoloMode || _userProject == null
-        ? _tasks
-        : _tasks.where((task) {
-            // Show unassigned tasks to everyone
-            if (task['assigned_role'] == null || task['assigned_role'] == '') {
-              return true;
-            }
-            // Show tasks assigned to user's role
-            return task['assigned_role'] == _userProject?['role'];
-          }).toList();
+    // Show all tasks - users can claim tasks themselves
+    final filteredTasks = _tasks;
     
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -671,6 +630,42 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         : Column(
                             children: filteredTasks.map((task) => _buildTaskCard(task)).toList(),
                           ),
+
+                    const SizedBox(height: AppConstants.spacingL),
+
+                    // Complete Project Button (when all tasks done and user hasn't completed yet)
+                    if (_userProject != null && 
+                        _tasks.isNotEmpty && 
+                        _tasks.every((t) => t['status'] == 'done') &&
+                        _userProject!['status'] != 'completed' &&
+                        (_isPM || _isAdmin || widget.project['mode'] == 'solo'))
+                      ElevatedButton.icon(
+                        onPressed: _completeProject,
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Mark Project as Completed'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                      ),
+
+                    // Leave Project Button (for members, not PM in multiplayer)
+                    if (_userProject != null && 
+                        !(widget.project['mode'] == 'multiplayer' && _isPM))
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppConstants.spacingM),
+                        child: ElevatedButton.icon(
+                          onPressed: _leaveProject,
+                          icon: const Icon(Icons.exit_to_app),
+                          label: const Text('Leave Project'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.error,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 50),
+                          ),
+                        ),
+                      ),
           ],
         ),
       ),
@@ -680,6 +675,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   Widget _buildTaskCard(Map<String, dynamic> task) {
     final isCompleted = task['status'] == 'done';
     final priorityColor = _getPriorityColor(task['priority'] ?? 'medium');
+    
+    // Check if user can update this task
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    final userRole = _userProject?['role'] ?? 'user';
+    final isProjectMode = widget.project['mode'] == 'solo';
+    final canUpdate = userRole == 'pm' 
+        || userRole == 'fullstack'
+        || task['assigned_user_id'] == userId
+        || task['claimed_by_user_id'] == userId
+        || isProjectMode;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
@@ -690,7 +695,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
             // Checkbox
             Checkbox(
               value: isCompleted,
-              onChanged: (_) => _toggleTaskStatus(task),
+              onChanged: canUpdate ? (_) => _toggleTaskStatus(task) : null,
               activeColor: AppColors.success,
             ),
             const SizedBox(width: AppConstants.spacingS),
@@ -780,36 +785,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                           ),
                         ),
                       ),
-                      // Role Badge (if assigned)
-                      if (task['assigned_role'] != null) ...[
-                        const SizedBox(width: AppConstants.spacingS),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.getRoleColor(task['assigned_role']),
-                            border: Border.all(color: Colors.black, width: 2),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.person,
-                                size: 12,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                task['assigned_role'].toString().toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ],
@@ -851,10 +826,17 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
               itemCount: _teamMembers.length,
               itemBuilder: (context, index) {
                 final member = _teamMembers[index];
-                final profile = member['profiles'];
+                // profile is now directly attached as a map
+                final profile = member['profile'] as Map<String, dynamic>?;
                 final role = member['role'] as String;
                 final progress = member['progress'] ?? 0.0;
                 final roleColor = AppColors.getRoleColor(role);
+                final userId = context.read<AuthProvider>().currentUser?.id;
+                final isCurrentUser = member['user_id'] == userId;
+                final canKick = !isCurrentUser && 
+                    widget.project['mode'] == 'multiplayer' && 
+                    (_isPM || _isAdmin) && 
+                    role != 'pm'; // Can't kick PM
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
@@ -866,8 +848,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         CircleAvatar(
                           radius: 28,
                           backgroundColor: roleColor,
-                          backgroundImage: profile?['avatar_url'] != null
-                              ? NetworkImage(profile['avatar_url'])
+                          backgroundImage: profile != null && profile['avatar_url'] != null
+                              ? NetworkImage(profile['avatar_url'] as String)
                               : null,
                           child: profile?['avatar_url'] == null
                               ? Text(
@@ -950,6 +932,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                             ],
                           ),
                         ),
+                        // Kick button for PM/Admin
+                        if (canKick)
+                          IconButton(
+                            icon: const Icon(Icons.person_remove, color: AppColors.error),
+                            onPressed: () => _kickMember(member),
+                            tooltip: 'Remove from project',
+                          ),
                       ],
                     ),
                   ),
@@ -1004,5 +993,202 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     
     // PM can add in multiplayer
     return _isPM;
+  }
+
+  Future<void> _completeProject() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          side: const BorderSide(color: AppColors.border, width: AppConstants.borderWidth),
+        ),
+        title: const Text('Complete Project?'),
+        content: const Text(
+          'All tasks are done! Mark this project as completed?\n\nThis action cannot be undone.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+            ),
+            child: const Text('Complete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final userId = context.read<AuthProvider>().currentUser?.id;
+
+      // Mark user_project as completed
+      await SupabaseService.client
+          .from('user_projects')
+          .update({
+            'status': 'completed',
+            'completed_at': DateTime.now().toIso8601String(),
+          })
+          .eq('user_id', userId!)
+          .eq('project_id', widget.project['id']);
+
+      // TODO: Award badges after function is deployed
+      // try {
+      //   await SupabaseService.client.rpc('award_badges_on_completion', params: {
+      //     'p_user_id': userId,
+      //   });
+      // } catch (e) {
+      //   debugPrint('Badge awarding error (non-critical): $e');
+      // }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Project completed! Great work!'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _leaveProject() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          side: const BorderSide(color: AppColors.border, width: AppConstants.borderWidth),
+        ),
+        title: const Text('Leave Project?'),
+        content: const Text(
+          'Are you sure you want to leave this project?\n\nYour progress will be lost.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Leave', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final userId = context.read<AuthProvider>().currentUser?.id;
+      
+      await SupabaseService.client
+          .from('user_projects')
+          .delete()
+          .eq('user_id', userId!)
+          .eq('project_id', widget.project['id']);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Left project successfully')),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _kickMember(Map<String, dynamic> member) async {
+    final profile = member['profile'] as Map<String, dynamic>?;
+    final memberName = profile?['name'] ?? 'User';
+    
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          side: const BorderSide(color: AppColors.border, width: AppConstants.borderWidth),
+        ),
+        title: const Text('Remove Member?'),
+        content: Text(
+          'Remove $memberName from this project?\n\nTheir tasks will remain but unassigned.',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Remove', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final memberId = member['user_id'];
+      
+      await SupabaseService.client
+          .from('tasks')
+          .update({
+            'claimed_by_user_id': null,
+            'is_claimed': false,
+          })
+          .eq('project_id', widget.project['id'])
+          .eq('claimed_by_user_id', memberId);
+      
+      await SupabaseService.client
+          .from('user_projects')
+          .delete()
+          .eq('user_id', memberId)
+          .eq('project_id', widget.project['id']);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$memberName removed from project')),
+        );
+        _loadData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 }

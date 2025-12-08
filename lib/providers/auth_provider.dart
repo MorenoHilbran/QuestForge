@@ -211,19 +211,14 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
         data: {
-          'name': name,
+          'full_name': name, // Store in auth metadata for trigger to use
         },
       );
 
       if (response.user != null) {
-        // Create profile in profiles table
-        await SupabaseService.client.from('profiles').insert({
-          'id': response.user!.id,
-          'name': name,
-          'email': email,
-          'role': 'user',
-        });
-
+        // Profile is automatically created by handle_new_user() trigger
+        // No need to manually insert here!
+        
         await _loadUserProfile(response.user!.id);
         _isLoading = false;
         notifyListeners();

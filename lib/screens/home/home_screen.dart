@@ -36,16 +36,18 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final userId = context.read<AuthProvider>().currentUser?.id;
       
-      // Load projects with joined users info, status, and role data for validation
+      // V2: Load projects with joined users info (simplified - no nested profiles)
       final response = _selectedDifficulty == 'all'
           ? await SupabaseService.client
               .from('projects')
-              .select('*, user_projects(user_id, status, role, profiles(id, name, avatar_url))')
+              .select('*, user_projects(user_id, status, role, approval_status)')
+              .isFilter('deleted_at', null)
               .order('created_at', ascending: false)
           : await SupabaseService.client
               .from('projects')
-              .select('*, user_projects(user_id, status, role, profiles(id, name, avatar_url))')
+              .select('*, user_projects(user_id, status, role, approval_status)')
               .eq('difficulty', _selectedDifficulty)
+              .isFilter('deleted_at', null)
               .order('created_at', ascending: false);
       
       final projectsData = (response as List).cast<Map<String, dynamic>>();
@@ -91,40 +93,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  int _getMaxMembers(ProjectModel project) {
-    // Solo mode = 1 user
-    if (project.mode == 'solo') return 1;
-    
-    // Multiplayer: HANYA gunakan role_limits yang diset admin
-    // Jangan ada fallback/estimasi, karena max members HARUS dari admin
-    if (project.roleLimits != null && project.roleLimits!.isNotEmpty) {
-      int total = 0;
-      project.roleLimits!.forEach((role, limit) {
-        // Handle both int and String types from JSON
-        int limitValue = 0;
-        if (limit is int) {
-          limitValue = limit;
-        } else if (limit is String) {
-          limitValue = int.tryParse(limit) ?? 0;
-        } else if (limit is double) {
-          limitValue = limit.toInt();
-        }
-        total += limitValue;
-      });
-      
-      return total;
-    }
-    
-    // Jika role_limits belum diset, return 0
-    // Ini menandakan admin belum mengkonfigurasi max members
-    return 0;
+  // V2: Use calculatedMaxMembers getter from ProjectModel
+  // This automatically calculates from roleLimits
+
+  bool _isProjectFull(ProjectModel project) {
+    final maxMembers = project.calculatedMaxMembers;
+    final currentMembers = project.joinedUsers?.length ?? 0;
+    return maxMembers > 0 && currentMembers >= maxMembers;
   }
 
   Widget _buildJoinButton(ProjectModel project) {
     final isJoined = _userJoinedProjects[project.id] == true;
-    final maxMembers = _getMaxMembers(project);
-    final currentMembers = project.joinedUsers?.length ?? 0;
-    final isFull = maxMembers > 0 && currentMembers >= maxMembers;
+    final isFull = _isProjectFull(project);
     final isCompleted = project.isCompleted;
 
     // Already joined
@@ -612,9 +592,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           const Icon(Icons.people, size: 16, color: Colors.black),
                           const SizedBox(width: 4),
                           Text(
-                            _getMaxMembers(project) > 0
-                                ? '${project.joinedUsers?.length ?? 0}/${_getMaxMembers(project)}'
-                                : '${project.joinedUsers?.length ?? 0}/?',
+                            project.calculatedMaxMembers > 0
+                                ? '${project.joinedUsers?.length ?? 0}/${project.calculatedMaxMembers}'
+                                : '${project.joinedUsers?.length ?? 0}',
                             style: const TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,

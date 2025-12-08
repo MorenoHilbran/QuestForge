@@ -240,7 +240,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                       vertical: AppConstants.spacingS,
                     ),
                     decoration: BoxDecoration(
-                      color: userProject.mode == 'solo'
+                      color: (project['mode'] ?? 'solo') == 'solo'
                           ? AppColors.accent
                           : AppColors.primary,
                       border: Border.all(
@@ -251,7 +251,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                           BorderRadius.circular(AppConstants.borderRadius),
                     ),
                     child: Text(
-                      userProject.mode.toUpperCase(),
+                      (project['mode'] ?? 'solo').toString().toUpperCase(),
                       style: const TextStyle(
                         color: Colors.black,
                         fontWeight: FontWeight.bold,

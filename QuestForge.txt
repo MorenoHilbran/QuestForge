@@ -1,0 +1,350 @@
+﻿📘 Product Requirements Document (PRD)
+Project Management App – Neobrutalism Style
+________________
+
+
+1. Product Overview
+1.1 Product Name
+QuestForge (placeholder; bisa diganti)
+1.2 Description
+TaskForge adalah aplikasi mobile Project Management dengan desain Neobrutalism yang menghadirkan pengalaman manajemen proyek yang visual, tegas, dan playful. Aplikasi ini memfasilitasi kolaborasi tim melalui pengaturan proyek solo/multiplayer, role assignment, task management, dan milestone tracking.
+1.3 Target Users
+* Mahasiswa yang kerja kelompok / capstone project
+
+* Freelancers
+
+* Tim kecil yang butuh PM tools sederhana
+
+* Project Manager pemula
+
+1.4 Unique Value Proposition
+   * UI dengan style Neobrutalism (bold colors, thick borders, chunky layout)
+
+   * Fokus pada role-based project flow (Frontend, Backend, PM, UI/UX)
+
+   * Simple, fast, and fun project management
+
+________________
+
+
+2. Goals & Objectives
+2.1 Business Goals
+      * Menyediakan platform manajemen proyek sederhana untuk pemula dan tim kecil
+
+      * Menonjolkan visual neobrutalism sebagai experience utama
+
+      * Memudahkan pembagian role dan pembagian tugas yang jelas
+
+2.2 User Goals
+         * User dapat bergabung ke project sesuai role
+
+         * PM dapat menambahkan task per role
+
+         * User dapat melacak milestone secara visual dan jelas
+
+________________
+
+
+3. Core Features
+3.1 Admin Features
+            1. Add Project
+
+               * Input: Project Name, Description, Deadline, Thumbnail
+
+               * Generate Project Code (untuk user join)
+
+                  2. Project Overview
+
+                     * List semua project
+
+                     * Detail overview tiap project:
+
+                        * jumlah user
+
+                        * progress (berdasarkan milestone)
+
+                        * PM yang bertanggung jawab
+
+Catatan: Admin hanya membuat & melihat, tidak ikut bekerja di project.
+________________
+
+
+3.2 User Features
+3.2.1 User Registration & Profile
+                           * Basic onboarding: name, email, avatar
+
+                           * User dapat melihat daftar project yang diikuti
+
+________________
+
+
+3.2.2 Join Project
+User dapat:
+                              * Join Project Solo → otomatis menjadi PM + semua role
+
+                              * Join Project Multiplayer:
+
+                                 1. Masukkan Project Code
+
+                                 2. Pilih Role:
+
+                                    * Frontend
+
+                                    * Backend
+
+                                    * Project Manager (PM)
+
+                                    * UI/UX
+
+                                       3. PM harus approve (opsional)
+
+________________
+
+
+3.3 Project Features
+3.3.1 Project Dashboard
+Menampilkan:
+                                          * Progress Milestone
+
+                                          * List anggota dan role
+
+                                          * Total task per role
+
+                                          * Deadline
+
+UI: Blocky card berwarna cerah (neobrutalism style)
+________________
+
+
+3.3.2 Task Management (Role-based)
+Siapa yang bisa menambah task?
+ 👉 Hanya PM
+Task berisi:
+                                             * Judul task
+
+                                             * Role yang dituju (FE/BE/UIUX/PM)
+
+                                             * Priority (High/Medium/Low)
+
+                                             * Deadline
+
+                                             * Status (To-do, In Progress, Review, Done)
+
+User Role hanya melihat & update task yang ditujukan pada role-nya.
+________________
+
+
+3.3.3 Milestones
+Setiap project memiliki milestone:
+                                                * Milestone name
+
+                                                * Target date
+
+                                                * Progress indikator (persentase otomatis dari status task)
+
+                                                * Status: Not Started / In Progress / Completed
+
+PM dapat:
+                                                   * Add/Edit/Delete milestone
+User dapat:
+
+                                                   * Melihat detail milestone
+
+________________
+
+
+3.3.4 Activity Log
+Tracking:
+                                                      * Task created
+
+                                                      * Task updated
+
+                                                      * Milestone updated
+
+                                                      * Role joined / leave
+
+Visual style: list blok besar dengan warna kontras
+________________
+
+
+3.4 Interface Style (Neobrutalism)
+Colors
+                                                         * Primary: Kuning cerah (#FFDA26)
+
+                                                         * Secondary: Cyan (#00E0E0)
+
+                                                         * Accent: Soft Pink (#FF69AD)
+
+                                                         * Black thick outlines (3–5px)
+
+Elements
+                                                            * Kartu tebal dengan bayangan “hard shadow”
+
+                                                            * Tombol persegi besar
+
+                                                            * Border tebal (2–4px)
+
+                                                            * Typography besar, tegas (font cocok: Space Grotesk / Poppins ExtraBold)
+
+Motion
+                                                               * Micro-animation “pop” saat menambah task
+
+                                                               * Progress bar chunky
+
+________________
+
+
+4. User Flow
+4.1 Admin Flow
+                                                                  1. Login
+
+                                                                  2. Create Project
+
+                                                                  3. View Overview → List semua project
+
+                                                                  4. Click Project → lihat progress & milestone
+
+4.2 User Flow
+1. Onboarding
+                                                                     * Login / Register
+
+                                                                     * Setup profile
+
+2. Join Project
+                                                                        * Masukkan project code
+
+                                                                        * Pilih role
+
+                                                                        * Masuk ke project dashboard
+
+3. Task Handling
+                                                                           * Lihat tugas berdasarkan role
+
+                                                                           * Update status task
+
+                                                                           * Selesaikan dan pindah ke milestone progress
+
+4. Milestone Tracking
+                                                                              * Lihat milestone bar
+
+                                                                              * Check progress per task
+
+________________
+
+
+5. Technical Requirements
+5.1 Platform
+                                                                                 * Mobile Apps (Android/iOS)
+
+                                                                                 * Framework saran:
+
+                                                                                    * React Native
+
+                                                                                    * Flutter
+
+5.2 Backend
+                                                                                       * Node.js (Express) atau Laravel
+
+                                                                                       * Firebase (alternatif untuk real-time)
+
+5.3 Database
+                                                                                          * MongoDB (jika ingin fleksibel)
+
+                                                                                          * MySQL/PostgreSQL (role-based table lebih rapi)
+
+________________
+
+
+6. Database Structure (Simplified)
+Users
+                                                                                             * id
+
+                                                                                             * name
+
+                                                                                             * email
+
+                                                                                             * role_in_project (FE/BE/UIUX/PM)
+
+Projects
+                                                                                                * id
+
+                                                                                                * name
+
+                                                                                                * description
+
+                                                                                                * code
+
+                                                                                                * admin_id
+
+                                                                                                * deadline
+
+Project_Users
+                                                                                                   * project_id
+
+                                                                                                   * user_id
+
+                                                                                                   * role
+
+Tasks
+                                                                                                      * id
+
+                                                                                                      * project_id
+
+                                                                                                      * title
+
+                                                                                                      * assigned_role
+
+                                                                                                      * status
+
+                                                                                                      * priority
+
+                                                                                                      * deadline
+
+Milestones
+                                                                                                         * id
+
+                                                                                                         * project_id
+
+                                                                                                         * name
+
+                                                                                                         * target_date
+
+                                                                                                         * progress
+
+Activity_Log
+                                                                                                            * id
+
+                                                                                                            * project_id
+
+                                                                                                            * message
+
+                                                                                                            * timestamp
+
+________________
+
+
+7. Success Metrics
+                                                                                                               * Users yang aktif membuat/bergabung project
+
+                                                                                                               * Jumlah task yang dikelola
+
+                                                                                                               * Retensi 30 hari
+
+                                                                                                               * Completion rate project
+
+                                                                                                               * Feedback user terhadap desain neobrutalism
+
+________________
+
+
+8. Risks & Mitigation
+Risiko
+	Mitigasi
+	Role overlap membingungkan user
+	Role selection jelas & terbatas
+	PM overload task
+	PM diberi template task
+	Terlalu intens visual (neobrutalism)
+	Tambah opsi "reduced color mode"
+	User gabung project asal-asalan
+	Gunakan project code + optional PM approval

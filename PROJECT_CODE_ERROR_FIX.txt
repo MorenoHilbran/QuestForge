@@ -1,0 +1,49 @@
+🚨 PROJECT CODE ERROR FIX
+
+Error: "null value in column 'code' of relation 'projects' violates not-null constraint"
+
+========================================
+SOLUTION
+========================================
+
+Run SQL untuk add auto-generate project code function!
+
+========================================
+OPTION 1: Quick Fix (RECOMMENDED)
+========================================
+
+1. Open Supabase SQL Editor
+
+2. Copy file: database\fixes\ADD_PROJECT_CODE_FUNCTION.sql
+
+3. Paste ke SQL Editor
+
+4. Click RUN
+
+5. Done! Try create project again ✓
+
+========================================
+OPTION 2: Complete Reset (if Option 1 fails)
+========================================
+
+1. Run QUICK_RESET.sql (sudah updated dengan function)
+
+2. Update user role ke admin lagi:
+   UPDATE profiles SET role = 'admin' WHERE email = 'your-email';
+
+3. Restart Flutter
+
+========================================
+VERIFY SUCCESS
+========================================
+
+After running SQL:
+1. Go to Admin → Manage Projects
+2. Click "Create New Project"
+3. Fill in: Title, Description, Type, etc
+4. Click "Create Project"
+5. Should see success message + project code (e.g., "ABC123") ✓
+
+========================================
+
+Now go fix it! 🚀
