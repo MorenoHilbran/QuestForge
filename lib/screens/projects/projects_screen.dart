@@ -10,7 +10,7 @@ import '../../widgets/common/neo_progress_bar.dart';
 import 'project_detail_screen.dart';
 
 class ProjectsScreen extends StatefulWidget {
-  const ProjectsScreen({super.key});
+  const ProjectsScreen({Key? key}) : super(key: key);
 
   @override
   State<ProjectsScreen> createState() => _ProjectsScreenState();

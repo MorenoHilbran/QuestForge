@@ -9,7 +9,7 @@ import '../../widgets/common/neo_card.dart';
 import '../projects/join_project_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final userId = context.read<AuthProvider>().currentUser?.id;
       
-      // V2: Load projects with joined users info (simplified - no nested profiles)
+      // V2: Load projects with joined users info and project status
       final response = _selectedDifficulty == 'all'
           ? await SupabaseService.client
               .from('projects')
@@ -52,19 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
       
       final projectsData = (response as List).cast<Map<String, dynamic>>();
       
-      // Process each project to add completion status
-      final projects = <ProjectModel>[];
-      for (var data in projectsData) {
-        // Check if any user has completed this project
-        final userProjects = data['user_projects'] as List?;
-        bool isCompleted = false;
-        if (userProjects != null) {
-          isCompleted = userProjects.any((up) => up['status'] == 'completed');
-        }
-        data['isCompleted'] = isCompleted;
-        
-        projects.add(ProjectModel.fromJson(data));
-      }
+      // Process each project - status is now directly from projects table
+      final projects = projectsData.map((data) => ProjectModel.fromJson(data)).toList();
       
       // Check which projects user has joined
       final joinedMap = <String, bool>{};
@@ -107,7 +96,41 @@ class _HomeScreenState extends State<HomeScreen> {
     final isFull = _isProjectFull(project);
     final isCompleted = project.isCompleted;
 
-    // Already joined
+    // Completed - show first priority
+    if (isCompleted) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.3),
+          border: Border.all(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.check_circle_outline,
+              color: AppColors.textPrimary,
+              size: 20,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Project Completed',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Already joined (but not completed)
     if (isJoined) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -143,8 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // Completed or Full - show disabled button
-    if (isCompleted || isFull) {
+    // Full - show disabled button
+    if (isFull) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
@@ -155,18 +178,18 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
         ),
-        child: Row(
+        child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isCompleted ? Icons.lock : Icons.people,
+              Icons.people,
               color: AppColors.textSecondary,
               size: 20,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
-              isCompleted ? 'Project Completed' : 'Project Full',
-              style: const TextStyle(
+              'Project Full',
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,

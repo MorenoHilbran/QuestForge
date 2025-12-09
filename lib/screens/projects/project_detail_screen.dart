@@ -147,8 +147,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
     // Permission check:
     // - Admin can always update
+    // - Solo mode: if joined (_userProject != null), can update any task
     // - PM can always update (including general tasks)
-    // - Solo mode - anyone can update
     // - Multiplayer:
     //   - General tasks (assigned_role = null) ONLY PM can update
     //   - Role-specific tasks: only matching role can update
@@ -156,22 +156,23 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     final isGeneralTask = assignedRole == null;
     final isPMRole = _isPM || userRole == 'pm' || userRole == 'project_manager';
     final roleMatches = !isGeneralTask && assignedRole == userRole;
+    final isJoinedSolo = isSoloMode && _userProject != null; // Solo: just need to be joined
 
-    // PM can update all tasks (including general)
-    // Others can only update role-specific tasks that match their role
     final canUpdate =
         _isAdmin ||
+        isJoinedSolo || // Solo: if joined, can update any task
         isPMRole ||
         task['assigned_user_id'] == userId ||
         task['claimed_by_user_id'] == userId ||
-        isSoloMode ||
         roleMatches; // Multiplayer: role matches (not general task)
 
     if (!canUpdate) {
       if (mounted) {
-        final message = isGeneralTask
-            ? 'General tasks can only be updated by Project Manager'
-            : 'This task is assigned to ${assignedRole ?? "another role"}';
+        final message = isSoloMode
+            ? 'Please join this project first to update tasks'
+            : isGeneralTask
+                ? 'General tasks can only be updated by Project Manager'
+                : 'This task is assigned to ${assignedRole ?? "another role"}';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message), backgroundColor: Colors.orange),
         );
@@ -235,6 +236,173 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
             content: Text(
               'Error: ${e.toString().contains('policy') ? 'You don\'t have permission to update this task' : 'Failed to update task'}',
             ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  bool _canCompleteProject() {
+    // Check if project is already completed
+    if (widget.project['status'] == 'completed') {
+      return false;
+    }
+
+    // Check if all tasks are done
+    if (_tasks.isEmpty) {
+      return false;
+    }
+
+    final allTasksDone = _tasks.every((task) => task['status'] == 'done');
+    return allTasksDone;
+  }
+
+  Future<void> _completeProject() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          side: const BorderSide(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
+        ),
+        title: const Text(
+          'Complete Project',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Are you sure you want to mark this project as completed?',
+              style: TextStyle(color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: AppConstants.spacingM),
+            Container(
+              padding: const EdgeInsets.all(AppConstants.spacingM),
+              decoration: BoxDecoration(
+                color: AppColors.success.withOpacity(0.1),
+                border: Border.all(
+                  color: AppColors.success,
+                  width: AppConstants.borderWidth,
+                ),
+                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: AppColors.success, size: 20),
+                      SizedBox(width: AppConstants.spacingS),
+                      Text(
+                        'This will:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppConstants.spacingS),
+                  const Text(
+                    '• Mark project as completed',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const Text(
+                    '• Award badges to all team members',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const Text(
+                    '• Update team member achievements',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: AppConstants.spacingM),
+                  Text(
+                    'Team members: ${_teamMembers.length}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+            ),
+            child: const Text('Complete Project'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final userId = context.read<AuthProvider>().currentUser?.id;
+
+      // Call complete_project function
+      final response = await SupabaseService.client.rpc(
+        'complete_project',
+        params: {
+          'p_project_id': widget.project['id'],
+          'p_user_id': userId,
+        },
+      );
+
+      if (response['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Project completed!'),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Reload data to show updated status
+        await _loadData();
+
+        // Navigate back to projects list after a delay
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Failed to complete project'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error completing project: $e'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -1120,6 +1288,34 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                       ),
                     ],
                   ],
+
+                  // Complete Project Button (PM only, when all tasks done)
+                  if (_isPM && _canCompleteProject()) ...[
+                    const SizedBox(height: AppConstants.spacingL),
+                    const Divider(color: AppColors.border, thickness: 2),
+                    const SizedBox(height: AppConstants.spacingL),
+                    ElevatedButton.icon(
+                      onPressed: _completeProject,
+                      icon: const Icon(Icons.check_circle, color: Colors.white),
+                      label: const Text(
+                        'Complete Project & Award Badges',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.borderRadius,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1324,8 +1520,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
     // Permission check (MUST match _toggleTaskStatus logic):
     // - Admin can always update
+    // - Solo mode: if joined (_userProject != null), can update any task
     // - PM can always update (including general tasks)
-    // - Solo mode - anyone can update
     // - Multiplayer:
     //   - General tasks (assigned_role = null) ONLY PM can update
     //   - Role-specific tasks: only matching role can update
@@ -1333,13 +1529,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     final isGeneralTask = assignedRole == null;
     final isPMRole = _isPM || userRole == 'pm' || userRole == 'project_manager';
     final roleMatches = !isGeneralTask && assignedRole == userRole;
+    final isJoinedSolo = isSoloMode && _userProject != null; // Solo: just need to be joined
 
     final canUpdate =
         _isAdmin ||
+        isJoinedSolo || // Solo: if joined, can update any task
         isPMRole ||
         task['assigned_user_id'] == userId ||
         task['claimed_by_user_id'] == userId ||
-        isSoloMode ||
         roleMatches;
 
     return Padding(
@@ -1762,86 +1959,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     return _isPM;
   }
 
-  Future<void> _completeProject() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-          side: const BorderSide(
-            color: AppColors.border,
-            width: AppConstants.borderWidth,
-          ),
-        ),
-        title: const Text('Complete Project?'),
-        content: const Text(
-          'All tasks are done! Mark this project as completed?\n\nThis action cannot be undone.',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-            child: const Text(
-              'Complete',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      final userId = context.read<AuthProvider>().currentUser?.id;
-
-      // Mark user_project as completed
-      await SupabaseService.client
-          .from('user_projects')
-          .update({
-            'status': 'completed',
-            'completed_at': DateTime.now().toIso8601String(),
-          })
-          .eq('user_id', userId!)
-          .eq('project_id', widget.project['id']);
-
-      // TODO: Award badges after function is deployed
-      // try {
-      //   await SupabaseService.client.rpc('award_badges_on_completion', params: {
-      //     'p_user_id': userId,
-      //   });
-      // } catch (e) {
-      //   debugPrint('Badge awarding error (non-critical): $e');
-      // }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 Project completed! Great work!'),
-            backgroundColor: AppColors.success,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
-  }
-
   Future<void> _leaveProject() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1881,23 +1998,71 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     try {
       final userId = context.read<AuthProvider>().currentUser?.id;
 
-      await SupabaseService.client
+      // Check if user_project exists before delete
+      final beforeDelete = await SupabaseService.client
+          .from('user_projects')
+          .select()
+          .eq('user_id', userId!)
+          .eq('project_id', widget.project['id'])
+          .maybeSingle();
+
+      if (beforeDelete == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('You are not a member of this project')),
+          );
+        }
+        return;
+      }
+
+      // Perform delete
+      final deleteResult = await SupabaseService.client
           .from('user_projects')
           .delete()
-          .eq('user_id', userId!)
-          .eq('project_id', widget.project['id']);
+          .eq('user_id', userId)
+          .eq('project_id', widget.project['id'])
+          .select(); // Add select to get deleted rows
+
+      // Verify deletion
+      final afterDelete = await SupabaseService.client
+          .from('user_projects')
+          .select()
+          .eq('user_id', userId)
+          .eq('project_id', widget.project['id'])
+          .maybeSingle();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Left project successfully')),
-        );
-        Navigator.pop(context, true);
+        if (afterDelete == null) {
+          // Successfully deleted
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Left project successfully'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          // Pop back to previous screen with refresh signal
+          Navigator.pop(context, true);
+        } else {
+          // Delete failed - still exists
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to leave project. Deleted: ${deleteResult?.length ?? 0} rows'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(
+          SnackBar(
+            content: Text('Error leaving project: $e'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
     }
   }

@@ -121,7 +121,7 @@ class ProjectModel {
           ? DateTime.parse(json['deleted_at'])
           : null,
       joinedUsers: users,
-      isCompleted: json['isCompleted'] ?? false,
+      isCompleted: json['status'] == 'completed',
     );
   }
 
