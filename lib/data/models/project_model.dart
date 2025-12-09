@@ -39,7 +39,7 @@ class ProjectModel {
   int get calculatedMaxMembers {
     if (mode == 'solo') return 1;
     if (roleLimits == null || roleLimits!.isEmpty) return 0;
-    
+
     int total = 0;
     roleLimits!.forEach((role, limit) {
       if (limit is int) {
@@ -75,10 +75,15 @@ class ProjectModel {
     List<Map<String, dynamic>>? users;
     if (json['user_projects'] != null) {
       final userProjects = json['user_projects'] as List;
-      users = userProjects
-          .where((up) => up['profiles'] != null)
-          .map((up) => up['profiles'] as Map<String, dynamic>)
-          .toList();
+      // If profiles nested, use profiles. Otherwise use user_projects directly
+      users = userProjects.map((up) {
+        if (up['profiles'] != null) {
+          return up['profiles'] as Map<String, dynamic>;
+        } else {
+          // Fallback: create minimal user object from user_id
+          return {'id': up['user_id']};
+        }
+      }).toList();
     }
 
     // Parse role_limits with better error handling

@@ -52,17 +52,19 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       // Calculate progress for each project
       for (var project in projects) {
         final projectId = project['project_id'];
-        
+
         // Get all tasks for this project
         final tasksResponse = await SupabaseService.client
             .from('tasks')
             .select('status')
             .eq('project_id', projectId);
-        
+
         final tasks = (tasksResponse as List);
-        
+
         if (tasks.isNotEmpty) {
-          final completedTasks = tasks.where((task) => task['status'] == 'done').length;
+          final completedTasks = tasks
+              .where((task) => task['status'] == 'done')
+              .length;
           final totalTasks = tasks.length;
           project['progress'] = (completedTasks / totalTasks * 100).toDouble();
         } else {
@@ -77,9 +79,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading projects: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading projects: $e')));
       }
     }
   }
@@ -102,57 +104,54 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: AppColors.border,
-            height: 3,
-          ),
+          child: Container(color: AppColors.border, height: 3),
         ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _userProjects.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.folder_open,
-                        size: 64,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(height: AppConstants.spacingM),
-                      Text(
-                        isAdmin
-                            ? 'No projects created yet'
-                            : 'No projects joined yet',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: AppConstants.spacingS),
-                      Text(
-                        isAdmin
-                            ? 'Create your first project'
-                            : 'Browse and join projects from Home',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.folder_open,
+                    size: 64,
+                    color: AppColors.textSecondary,
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadUserProjects,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(AppConstants.spacingM),
-                    itemCount: _userProjects.length,
-                    itemBuilder: (context, index) {
-                      return _buildProjectCard(_userProjects[index]);
-                    },
+                  const SizedBox(height: AppConstants.spacingM),
+                  Text(
+                    isAdmin
+                        ? 'No projects created yet'
+                        : 'No projects joined yet',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: AppConstants.spacingS),
+                  Text(
+                    isAdmin
+                        ? 'Create your first project'
+                        : 'Browse and join projects from Home',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadUserProjects,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(AppConstants.spacingM),
+                itemCount: _userProjects.length,
+                itemBuilder: (context, index) {
+                  return _buildProjectCard(_userProjects[index]);
+                },
+              ),
+            ),
     );
   }
 
@@ -176,8 +175,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
       child: NeoCard(
         child: InkWell(
-          onTap: () {
-            Navigator.of(context).push(
+          onTap: () async {
+            // Navigate to detail screen and wait for result
+            await Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => ProjectDetailScreen(
                   project: {
@@ -191,6 +191,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 ),
               ),
             );
+
+            // Reload projects when coming back to refresh progress
+            if (mounted) {
+              _loadUserProjects();
+            }
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,56 +214,87 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               // Role & Mode badges
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppConstants.spacingM,
-                      vertical: AppConstants.spacingS,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      border: Border.all(
-                        color: AppColors.border,
-                        width: AppConstants.borderWidth,
+                  // For solo projects, only show one badge
+                  // For multiplayer, show both role and mode
+                  if ((project['mode'] ?? 'solo') == 'solo') ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.spacingM,
+                        vertical: AppConstants.spacingS,
                       ),
-                      borderRadius:
-                          BorderRadius.circular(AppConstants.borderRadius),
-                    ),
-                    child: Text(
-                      AppConstants.projectRoleLabels[userProject.role] ??
-                          userProject.role.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: AppConstants.borderWidth,
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.borderRadius,
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: AppConstants.spacingS),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppConstants.spacingM,
-                      vertical: AppConstants.spacingS,
-                    ),
-                    decoration: BoxDecoration(
-                      color: (project['mode'] ?? 'solo') == 'solo'
-                          ? AppColors.accent
-                          : AppColors.primary,
-                      border: Border.all(
-                        color: AppColors.border,
-                        width: AppConstants.borderWidth,
-                      ),
-                      borderRadius:
-                          BorderRadius.circular(AppConstants.borderRadius),
-                    ),
-                    child: Text(
-                      (project['mode'] ?? 'solo').toString().toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                      child: const Text(
+                        'SOLO',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                  ),
+                  ] else ...[
+                    // Multiplayer: show role
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.spacingM,
+                        vertical: AppConstants.spacingS,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: AppConstants.borderWidth,
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.borderRadius,
+                        ),
+                      ),
+                      child: Text(
+                        AppConstants.projectRoleLabels[userProject.role] ??
+                            userProject.role.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppConstants.spacingS),
+                    // Multiplayer: show mode
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.spacingM,
+                        vertical: AppConstants.spacingS,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: AppConstants.borderWidth,
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.borderRadius,
+                        ),
+                      ),
+                      child: const Text(
+                        'MULTIPLAYER',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: AppConstants.spacingM),
@@ -297,8 +333,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                     color: AppColors.border,
                     width: AppConstants.borderWidth,
                   ),
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.borderRadius),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.borderRadius,
+                  ),
                 ),
                 child: Text(
                   userProject.status.toUpperCase().replaceAll('_', ' '),
