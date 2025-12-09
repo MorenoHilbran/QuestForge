@@ -18,8 +18,6 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
-  final GlobalKey<_HomeScreenState> _homeKey = GlobalKey();
-  final GlobalKey<_ProjectsScreenState> _projectsKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -30,15 +28,13 @@ class _MainNavigationState extends State<MainNavigation> {
     final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     final List<Widget> screens = [
-      isAdmin ? const AdminMonitoringScreen() : HomeScreen(key: _homeKey),
-      isAdmin
-          ? const AdminManageProjectsScreen()
-          : ProjectsScreen(key: _projectsKey),
+      isAdmin ? const AdminMonitoringScreen() : const HomeScreen(),
+      isAdmin ? const AdminManageProjectsScreen() : const ProjectsScreen(),
       const ProfileScreen(),
     ];
 
     return Scaffold(
-      body: screens[_currentIndex],
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.border, width: 3.0)),
@@ -49,16 +45,6 @@ class _MainNavigationState extends State<MainNavigation> {
             setState(() {
               _currentIndex = index;
             });
-
-            // Refresh screen when tab changes (untuk non-admin)
-            final isAdmin = context.read<AuthProvider>().isAdmin;
-            if (!isAdmin) {
-              if (index == 0 && _homeKey.currentState != null) {
-                _homeKey.currentState!._loadProjects();
-              } else if (index == 1 && _projectsKey.currentState != null) {
-                _projectsKey.currentState!._loadUserProjects();
-              }
-            }
           },
           backgroundColor: Colors.white,
           selectedItemColor: AppColors.primary,

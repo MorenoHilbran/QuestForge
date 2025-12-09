@@ -2152,6 +2152,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   double _calculateRoleProgress(String? userRole) {
     if (_tasks.isEmpty || userRole == null) return 0.0;
 
+    final isSoloMode = widget.project['mode'] == 'solo';
+
+    // SOLO MODE: Count all tasks regardless of role
+    if (isSoloMode) {
+      final completedTasks = _tasks.where((t) => t['status'] == 'done').length;
+      return (_tasks.isEmpty) ? 0.0 : (completedTasks / _tasks.length) * 100;
+    }
+
+    // MULTIPLAYER MODE:
     // PM counts all tasks (including general tasks)
     // Other roles count ONLY tasks assigned to their role (NOT general tasks)
     final isPMRole = userRole == 'pm' || userRole == 'project_manager';
