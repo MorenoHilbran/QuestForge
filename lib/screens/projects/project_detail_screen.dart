@@ -11,16 +11,13 @@ import '../widgets/neo_button.dart';
 class ProjectDetailScreen extends StatefulWidget {
   final Map<String, dynamic> project;
 
-  const ProjectDetailScreen({
-    super.key,
-    required this.project,
-  });
+  const ProjectDetailScreen({super.key, required this.project});
 
   @override
   State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
 }
 
-class _ProjectDetailScreenState extends State<ProjectDetailScreen> 
+class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _tasks = [];
   List<Map<String, dynamic>> _teamMembers = [];
@@ -49,8 +46,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
     try {
       final userId = context.read<AuthProvider>().currentUser?.id;
-      final isAdmin = context.read<AuthProvider>().currentUser?.isAdmin ?? false;
-      
+      final isAdmin =
+          context.read<AuthProvider>().currentUser?.isAdmin ?? false;
+
       setState(() => _isAdmin = isAdmin);
 
       // Load user's project participation
@@ -83,7 +81,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           .order('joined_at', ascending: true);
 
       // Load profiles for team members
-      final teamMembers = (teamResponse as List<dynamic>?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+      final teamMembers =
+          (teamResponse as List<dynamic>?)
+              ?.map((e) => e as Map<String, dynamic>)
+              .toList() ??
+          [];
       for (var member in teamMembers) {
         try {
           final profile = await SupabaseService.client
@@ -99,7 +101,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       }
 
       // Check if user is PM
-      final isPM = userProjectResponse != null && userProjectResponse['role'] == 'pm';
+      final isPM =
+          userProjectResponse != null && userProjectResponse['role'] == 'pm';
 
       // Check if project has PM (for multiplayer mode)
       bool hasProjectManager = false;
@@ -118,16 +121,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         _isPM = isPM;
         _hasProjectManager = hasProjectManager;
         // _milestones = List<Map<String, dynamic>>.from(milestonesResponse); // Future use
-        _tasks = (tasksResponse as List<dynamic>?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+        _tasks =
+            (tasksResponse as List<dynamic>?)
+                ?.map((e) => e as Map<String, dynamic>)
+                .toList() ??
+            [];
         _teamMembers = teamMembers;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
       }
     }
   }
@@ -137,38 +144,36 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     final userRole = _userProject?['role'] ?? 'user';
     final isSoloMode = widget.project['mode'] == 'solo';
     final assignedRole = task['assigned_role'] as String?;
-    
+
     // Permission check:
     // - Admin can always update
     // - PM can always update (including general tasks)
     // - Solo mode - anyone can update
-    // - Multiplayer: 
+    // - Multiplayer:
     //   - General tasks (assigned_role = null) ONLY PM can update
     //   - Role-specific tasks: only matching role can update
     // - Or task already assigned/claimed to user
     final isGeneralTask = assignedRole == null;
     final isPMRole = _isPM || userRole == 'pm' || userRole == 'project_manager';
     final roleMatches = !isGeneralTask && assignedRole == userRole;
-    
+
     // PM can update all tasks (including general)
     // Others can only update role-specific tasks that match their role
-    final canUpdate = _isAdmin
-        || isPMRole
-        || task['assigned_user_id'] == userId
-        || task['claimed_by_user_id'] == userId
-        || isSoloMode
-        || roleMatches; // Multiplayer: role matches (not general task)
+    final canUpdate =
+        _isAdmin ||
+        isPMRole ||
+        task['assigned_user_id'] == userId ||
+        task['claimed_by_user_id'] == userId ||
+        isSoloMode ||
+        roleMatches; // Multiplayer: role matches (not general task)
 
     if (!canUpdate) {
       if (mounted) {
-        final message = isGeneralTask 
+        final message = isGeneralTask
             ? 'General tasks can only be updated by Project Manager'
             : 'This task is assigned to ${assignedRole ?? "another role"}';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.orange,
-          ),
+          SnackBar(content: Text(message), backgroundColor: Colors.orange),
         );
       }
       return;
@@ -178,12 +183,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
     try {
       // If status is being set to in_progress and not yet claimed, claim it
-      final updateData = <String, dynamic>{
-        'status': newStatus,
-      };
+      final updateData = <String, dynamic>{'status': newStatus};
 
       // Auto-claim task if moving to in_progress and not assigned
-      if (newStatus == 'in_progress' && task['claimed_by_user_id'] == null && isSoloMode) {
+      if (newStatus == 'in_progress' &&
+          task['claimed_by_user_id'] == null &&
+          isSoloMode) {
         updateData['claimed_by_user_id'] = userId;
         updateData['is_claimed'] = true;
       }
@@ -215,7 +220,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Task marked as ${newStatus == 'done' ? 'completed' : 'incomplete'}'),
+              content: Text(
+                'Task marked as ${newStatus == 'done' ? 'completed' : 'incomplete'}',
+              ),
               backgroundColor: AppColors.success,
             ),
           );
@@ -225,7 +232,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString().contains('policy') ? 'You don\'t have permission to update this task' : 'Failed to update task'}'),
+            content: Text(
+              'Error: ${e.toString().contains('policy') ? 'You don\'t have permission to update this task' : 'Failed to update task'}',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -306,7 +315,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         },
                       );
                     }).toList(),
-                    
+
                     // Role Assignment (only for multiplayer)
                     if (isMultiplayer && availableRoles.isNotEmpty) ...[
                       const SizedBox(height: AppConstants.spacingM),
@@ -325,7 +334,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         decoration: InputDecoration(
                           hintText: 'Select role (optional)',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.borderRadius,
+                            ),
                           ),
                         ),
                         items: [
@@ -333,10 +344,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                             value: null,
                             child: Text('Any role'),
                           ),
-                          ...availableRoles.map((role) => DropdownMenuItem<String>(
-                            value: role,
-                            child: Text(AppConstants.projectRoleLabels[role!] ?? role),
-                          )),
+                          ...availableRoles.map(
+                            (role) => DropdownMenuItem<String>(
+                              value: role,
+                              child: Text(
+                                AppConstants.projectRoleLabels[role!] ?? role,
+                              ),
+                            ),
+                          ),
                         ],
                         onChanged: (value) {
                           setStateDialog(() => assignedRole = value);
@@ -438,7 +453,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.copy, size: 14, color: AppColors.primary),
+                    icon: const Icon(
+                      Icons.copy,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     onPressed: () {
@@ -489,10 +508,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                   Tab(text: 'Team'),
                 ],
               ),
-              Container(
-                color: AppColors.border,
-                height: 3,
-              ),
+              Container(color: AppColors.border, height: 3),
             ],
           ),
         ),
@@ -528,11 +544,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   Widget _buildTasksTab() {
     final isSoloMode = widget.project['mode'] == 'solo';
     final isMultiplayer = widget.project['mode'] == 'multiplayer';
-    
+
     // For multiplayer, group tasks by role
     Map<String, List<Map<String, dynamic>>> tasksByRole = {};
     List<Map<String, dynamic>> unassignedTasks = [];
-    
+
     if (isMultiplayer) {
       for (var task in _tasks) {
         final role = task['assigned_role'] as String?;
@@ -546,7 +562,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         }
       }
     }
-    
+
     return RefreshIndicator(
       onRefresh: _loadData,
       child: SingleChildScrollView(
@@ -555,351 +571,385 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-                    // Project Info Card
-                    NeoCard(
-                      color: Colors.white,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              // Difficulty Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppConstants.spacingM,
-                                  vertical: AppConstants.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getDifficultyColor(widget.project['difficulty']),
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: AppConstants.borderWidth,
-                                  ),
-                                  borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                                ),
-                                child: Text(
-                                  widget.project['difficulty']?.toString().toUpperCase() ?? 'MEDIUM',
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: AppConstants.spacingS),
-                              // Mode Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppConstants.spacingM,
-                                  vertical: AppConstants.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSoloMode ? AppColors.secondary : AppColors.primary,
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: AppConstants.borderWidth,
-                                  ),
-                                  borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                                ),
-                                child: Text(
-                                  isSoloMode ? 'SOLO' : 'TEAM',
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
+            // Project Info Card
+            NeoCard(
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // Difficulty Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppConstants.spacingM,
+                          vertical: AppConstants.spacingS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getDifficultyColor(
+                            widget.project['difficulty'],
                           ),
-                          const SizedBox(height: AppConstants.spacingM),
-                          Text(
-                            widget.project['description'] ?? 'No description',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: AppConstants.borderWidth,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.borderRadius,
+                          ),
+                        ),
+                        child: Text(
+                          widget.project['difficulty']
+                                  ?.toString()
+                                  .toUpperCase() ??
+                              'MEDIUM',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppConstants.spacingS),
+                      // Mode Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppConstants.spacingM,
+                          vertical: AppConstants.spacingS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSoloMode
+                              ? AppColors.secondary
+                              : AppColors.primary,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: AppConstants.borderWidth,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.borderRadius,
+                          ),
+                        ),
+                        child: Text(
+                          isSoloMode ? 'SOLO' : 'TEAM',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppConstants.spacingM),
+                  Text(
+                    widget.project['description'] ?? 'No description',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (_userProject != null) ...[
+                    const SizedBox(height: AppConstants.spacingM),
+                    const Divider(color: AppColors.border, thickness: 2),
+                    const SizedBox(height: AppConstants.spacingM),
+
+                    // Multiplayer: Show both overall and role progress
+                    if (isMultiplayer) ...[
+                      // Overall Project Progress
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Overall Project Progress',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
                               fontSize: 14,
                             ),
                           ),
-                          if (_userProject != null) ...[
-                            const SizedBox(height: AppConstants.spacingM),
-                            const Divider(color: AppColors.border, thickness: 2),
-                            const SizedBox(height: AppConstants.spacingM),
-                            
-                            // Multiplayer: Show both overall and role progress
-                            if (isMultiplayer) ...[
-                              // Overall Project Progress
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Overall Project Progress',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${_calculateOverallProgress().toStringAsFixed(0)}%',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppConstants.spacingS),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                                child: LinearProgressIndicator(
-                                  value: _calculateOverallProgress() / 100,
-                                  minHeight: 12,
-                                  backgroundColor: AppColors.secondary.withOpacity(0.3),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                                ),
-                              ),
-                              const SizedBox(height: AppConstants.spacingM),
-                              
-                              // User's Role Progress
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Your Progress (${AppConstants.projectRoleLabels[_userProject!['role']] ?? _userProject!['role']})',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${_calculateRoleProgress(_userProject!['role']).toStringAsFixed(0)}%',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.success,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppConstants.spacingS),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                                child: LinearProgressIndicator(
-                                  value: _calculateRoleProgress(_userProject!['role']) / 100,
-                                  minHeight: 12,
-                                  backgroundColor: AppColors.secondary.withOpacity(0.3),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.success),
-                                ),
-                              ),
-                            ] else ...[
-                              // Solo: Show user progress only
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Progress',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${(_userProject!['progress'] ?? 0).toStringAsFixed(0)}%',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppConstants.spacingS),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                                child: LinearProgressIndicator(
-                                  value: (_userProject!['progress'] ?? 0) / 100,
-                                  minHeight: 12,
-                                  backgroundColor: AppColors.secondary.withOpacity(0.3),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                                ),
-                              ),
-                            ],
-                          ],
+                          Text(
+                            '${_calculateOverallProgress().toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ],
                       ),
+                      const SizedBox(height: AppConstants.spacingS),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.borderRadius,
+                        ),
+                        child: LinearProgressIndicator(
+                          value: _calculateOverallProgress() / 100,
+                          minHeight: 12,
+                          backgroundColor: AppColors.secondary.withOpacity(0.3),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppConstants.spacingM),
+
+                      // User's Role Progress
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Your Progress (${AppConstants.projectRoleLabels[_userProject!['role']] ?? _userProject!['role']})',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            '${_calculateRoleProgress(_userProject!['role']).toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppConstants.spacingS),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.borderRadius,
+                        ),
+                        child: LinearProgressIndicator(
+                          value:
+                              _calculateRoleProgress(_userProject!['role']) /
+                              100,
+                          minHeight: 12,
+                          backgroundColor: AppColors.secondary.withOpacity(0.3),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.success,
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      // Solo: Show user progress only
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Progress',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '${(_userProject!['progress'] ?? 0).toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppConstants.spacingS),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.borderRadius,
+                        ),
+                        child: LinearProgressIndicator(
+                          value: (_userProject!['progress'] ?? 0) / 100,
+                          minHeight: 12,
+                          backgroundColor: AppColors.secondary.withOpacity(0.3),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppConstants.spacingL),
+
+            // Tasks Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Tasks',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (_tasks.isNotEmpty)
+                  Text(
+                    '${_tasks.where((t) => t['status'] == 'done').length}/${_tasks.length} completed',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
                     ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppConstants.spacingM),
 
-                    const SizedBox(height: AppConstants.spacingL),
-
-                    // Tasks Section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
+            _tasks.isEmpty
+                ? NeoCard(
+                    color: AppColors.background,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppConstants.spacingXL),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.task_outlined,
+                              size: 64,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(height: AppConstants.spacingM),
+                            const Text(
+                              'No tasks yet',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: AppConstants.spacingS),
+                            Text(
+                              (_isAdmin || isSoloMode)
+                                  ? 'Tap + button to create tasks'
+                                  : 'Admin will add tasks soon',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : isMultiplayer
+                // Multiplayer: Show tasks grouped by role
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Unassigned tasks (any role can claim)
+                      if (unassignedTasks.isNotEmpty) ...[
                         const Text(
-                          'Tasks',
+                          'General Tasks (Any Role)',
                           style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        if (_tasks.isNotEmpty)
-                          Text(
-                            '${_tasks.where((t) => t['status'] == 'done').length}/${_tasks.length} completed',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
-                            ),
-                          ),
+                        const SizedBox(height: AppConstants.spacingS),
+                        ...unassignedTasks
+                            .map((task) => _buildTaskCard(task))
+                            .toList(),
+                        const SizedBox(height: AppConstants.spacingL),
                       ],
-                    ),
-                    const SizedBox(height: AppConstants.spacingM),
 
-                    _tasks.isEmpty
-                        ? NeoCard(
-                            color: AppColors.background,
-                            child: Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(AppConstants.spacingXL),
-                                child: Column(
-                                  children: [
-                                    const Icon(
-                                      Icons.task_outlined,
-                                      size: 64,
-                                      color: AppColors.textSecondary,
+                      // Tasks grouped by role
+                      ...tasksByRole.entries.map((entry) {
+                        final role = entry.key;
+                        final tasks = entry.value;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppConstants.spacingM,
+                                    vertical: AppConstants.spacingS,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.2),
+                                    border: Border.all(
+                                      color: AppColors.primary,
+                                      width: 2,
                                     ),
-                                    const SizedBox(height: AppConstants.spacingM),
-                                    const Text(
-                                      'No tasks yet',
-                                      style: TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    borderRadius: BorderRadius.circular(
+                                      AppConstants.borderRadius,
                                     ),
-                                    const SizedBox(height: AppConstants.spacingS),
-                                    Text(
-                                      (_isAdmin || isSoloMode)
-                                          ? 'Tap + button to create tasks'
-                                          : 'Admin will add tasks soon',
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 14,
-                                      ),
+                                  ),
+                                  child: Text(
+                                    AppConstants.projectRoleLabels[role] ??
+                                        role.toUpperCase(),
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: AppConstants.spacingS),
+                                Text(
+                                  '${tasks.where((t) => t['status'] == 'done').length}/${tasks.length}',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
-                          )
-                        : isMultiplayer
-                            // Multiplayer: Show tasks grouped by role
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Unassigned tasks (any role can claim)
-                                  if (unassignedTasks.isNotEmpty) ...[
-                                    const Text(
-                                      'General Tasks (Any Role)',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    const SizedBox(height: AppConstants.spacingS),
-                                    ...unassignedTasks.map((task) => _buildTaskCard(task)).toList(),
-                                    const SizedBox(height: AppConstants.spacingL),
-                                  ],
-                                  
-                                  // Tasks grouped by role
-                                  ...tasksByRole.entries.map((entry) {
-                                    final role = entry.key;
-                                    final tasks = entry.value;
-                                    return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: AppConstants.spacingM,
-                                                vertical: AppConstants.spacingS,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primary.withOpacity(0.2),
-                                                border: Border.all(
-                                                  color: AppColors.primary,
-                                                  width: 2,
-                                                ),
-                                                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                                              ),
-                                              child: Text(
-                                                AppConstants.projectRoleLabels[role] ?? role.toUpperCase(),
-                                                style: const TextStyle(
-                                                  color: AppColors.textPrimary,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: AppConstants.spacingS),
-                                            Text(
-                                              '${tasks.where((t) => t['status'] == 'done').length}/${tasks.length}',
-                                              style: const TextStyle(
-                                                color: AppColors.textSecondary,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: AppConstants.spacingS),
-                                        ...tasks.map((task) => _buildTaskCard(task)).toList(),
-                                        const SizedBox(height: AppConstants.spacingL),
-                                      ],
-                                    );
-                                  }).toList(),
-                                ],
-                              )
-                            // Solo: Show all tasks in a list
-                            : Column(
-                                children: _tasks.map((task) => _buildTaskCard(task)).toList(),
-                              ),
+                            const SizedBox(height: AppConstants.spacingS),
+                            ...tasks
+                                .map((task) => _buildTaskCard(task))
+                                .toList(),
+                            const SizedBox(height: AppConstants.spacingL),
+                          ],
+                        );
+                      }).toList(),
+                    ],
+                  )
+                // Solo: Show all tasks in a list
+                : Column(
+                    children: _tasks
+                        .map((task) => _buildTaskCard(task))
+                        .toList(),
+                  ),
 
-                    const SizedBox(height: AppConstants.spacingL),
+            const SizedBox(height: AppConstants.spacingL),
 
-                    // Complete Project Button (when all tasks done and user hasn't completed yet)
-                    if (_userProject != null && 
-                        _tasks.isNotEmpty && 
-                        _tasks.every((t) => t['status'] == 'done') &&
-                        _userProject!['status'] != 'completed' &&
-                        (_isPM || _isAdmin || widget.project['mode'] == 'solo'))
-                      ElevatedButton.icon(
-                        onPressed: _completeProject,
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('Mark Project as Completed'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.success,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
-                      ),
+            // Complete Project Button (when all tasks done and user hasn't completed yet)
+            if (_userProject != null &&
+                _tasks.isNotEmpty &&
+                _tasks.every((t) => t['status'] == 'done') &&
+                _userProject!['status'] != 'completed' &&
+                (_isPM || _isAdmin || widget.project['mode'] == 'solo'))
+              ElevatedButton.icon(
+                onPressed: _completeProject,
+                icon: const Icon(Icons.check_circle),
+                label: const Text('Mark Project as Completed'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              ),
 
-                    // Leave Project Button (for members, not PM in multiplayer)
-                    if (_userProject != null && 
-                        !(widget.project['mode'] == 'multiplayer' && _isPM))
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppConstants.spacingM),
-                        child: ElevatedButton.icon(
-                          onPressed: _leaveProject,
-                          icon: const Icon(Icons.exit_to_app),
-                          label: const Text('Leave Project'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.error,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 50),
-                          ),
-                        ),
-                      ),
+            // Leave Project Button (for members, not PM in multiplayer)
+            if (_userProject != null &&
+                !(widget.project['mode'] == 'multiplayer' && _isPM))
+              Padding(
+                padding: const EdgeInsets.only(top: AppConstants.spacingM),
+                child: ElevatedButton.icon(
+                  onPressed: _leaveProject,
+                  icon: const Icon(Icons.exit_to_app),
+                  label: const Text('Leave Project'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -910,25 +960,26 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     final isCompleted = task['status'] == 'done';
     final priorityColor = _getPriorityColor(task['priority'] ?? 'medium');
     final assignedRole = task['assigned_role'] as String?;
-    
+
     // Check if user can update this task
     final userId = context.read<AuthProvider>().currentUser?.id;
     final userRole = _userProject?['role'] ?? 'user';
     final isSoloMode = widget.project['mode'] == 'solo';
     final isMultiplayer = widget.project['mode'] == 'multiplayer';
-    
+
     // User can update if:
     // 1. Solo mode, OR
     // 2. PM/Admin, OR
     // 3. Task is assigned to their role (or no role assigned), OR
     // 4. They already claimed this task
     final roleMatches = assignedRole == null || assignedRole == userRole;
-    final canUpdate = isSoloMode
-        || _isAdmin 
-        || _isPM
-        || (task['assigned_user_id'] == userId)
-        || (task['claimed_by_user_id'] == userId)
-        || (isMultiplayer && roleMatches);
+    final canUpdate =
+        isSoloMode ||
+        _isAdmin ||
+        _isPM ||
+        (task['assigned_user_id'] == userId) ||
+        (task['claimed_by_user_id'] == userId) ||
+        (isMultiplayer && roleMatches);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
@@ -958,7 +1009,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                             color: AppColors.textPrimary,
-                            decoration: isCompleted ? TextDecoration.lineThrough : null,
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
                         ),
                       ),
@@ -969,22 +1022,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         decoration: BoxDecoration(
                           color: priorityColor,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.border,
-                            width: 2,
-                          ),
+                          border: Border.all(color: AppColors.border, width: 2),
                         ),
                       ),
                     ],
                   ),
-                  if (task['description'] != null && task['description'].toString().isNotEmpty) ...[
+                  if (task['description'] != null &&
+                      task['description'].toString().isNotEmpty) ...[
                     const SizedBox(height: AppConstants.spacingS),
                     Text(
                       task['description'],
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 14,
-                        decoration: isCompleted ? TextDecoration.lineThrough : null,
+                        decoration: isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
                   ],
@@ -993,13 +1046,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                     children: [
                       // Priority Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: priorityColor.withOpacity(0.2),
                           border: Border.all(color: priorityColor, width: 2),
                         ),
                         child: Text(
-                          (task['priority'] ?? 'medium').toString().toUpperCase(),
+                          (task['priority'] ?? 'medium')
+                              .toString()
+                              .toUpperCase(),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -1010,13 +1068,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                       const SizedBox(width: AppConstants.spacingS),
                       // Status Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: isCompleted 
-                              ? AppColors.success.withOpacity(0.2) 
+                          color: isCompleted
+                              ? AppColors.success.withOpacity(0.2)
                               : AppColors.textSecondary.withOpacity(0.2),
                           border: Border.all(
-                            color: isCompleted ? AppColors.success : AppColors.textSecondary,
+                            color: isCompleted
+                                ? AppColors.success
+                                : AppColors.textSecondary,
                             width: 2,
                           ),
                         ),
@@ -1025,7 +1088,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: isCompleted ? AppColors.success : AppColors.textSecondary,
+                            color: isCompleted
+                                ? AppColors.success
+                                : AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -1033,13 +1098,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                       if (assignedRole != null && !isMultiplayer) ...[
                         const SizedBox(width: AppConstants.spacingS),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.2),
-                            border: Border.all(color: AppColors.primary, width: 2),
+                            border: Border.all(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
                           ),
                           child: Text(
-                            AppConstants.projectRoleLabels[assignedRole] ?? assignedRole.toUpperCase(),
+                            AppConstants.projectRoleLabels[assignedRole] ??
+                                assignedRole.toUpperCase(),
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -1049,7 +1121,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         ),
                       ],
                       // Show lock icon if user can't claim (wrong role)
-                      if (isMultiplayer && assignedRole != null && assignedRole != userRole && !_isAdmin && !_isPM) ...[
+                      if (isMultiplayer &&
+                          assignedRole != null &&
+                          assignedRole != userRole &&
+                          !_isAdmin &&
+                          !_isPM) ...[
                         const SizedBox(width: AppConstants.spacingS),
                         const Icon(
                           Icons.lock,
@@ -1105,9 +1181,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                 final roleColor = AppColors.getRoleColor(role);
                 final userId = context.read<AuthProvider>().currentUser?.id;
                 final isCurrentUser = member['user_id'] == userId;
-                final canKick = !isCurrentUser && 
-                    widget.project['mode'] == 'multiplayer' && 
-                    (_isPM || _isAdmin) && 
+                final canKick =
+                    !isCurrentUser &&
+                    widget.project['mode'] == 'multiplayer' &&
+                    (_isPM || _isAdmin) &&
                     role != 'pm'; // Can't kick PM
 
                 return Padding(
@@ -1120,7 +1197,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         CircleAvatar(
                           radius: 28,
                           backgroundColor: roleColor,
-                          backgroundImage: profile != null && profile['avatar_url'] != null
+                          backgroundImage:
+                              profile != null && profile['avatar_url'] != null
                               ? NetworkImage(profile['avatar_url'] as String)
                               : null,
                           child: profile?['avatar_url'] == null
@@ -1158,10 +1236,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                                     ),
                                     decoration: BoxDecoration(
                                       color: roleColor,
-                                      border: Border.all(color: Colors.black, width: 2),
+                                      border: Border.all(
+                                        color: Colors.black,
+                                        width: 2,
+                                      ),
                                     ),
                                     child: Text(
-                                      AppConstants.projectRoleLabels[role] ?? role.toUpperCase(),
+                                      AppConstants.projectRoleLabels[role] ??
+                                          role.toUpperCase(),
                                       style: const TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
@@ -1185,7 +1267,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                                 height: 6,
                                 decoration: BoxDecoration(
                                   color: Colors.grey.shade300,
-                                  border: Border.all(color: Colors.black, width: 2),
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 2,
+                                  ),
                                 ),
                                 child: FractionallySizedBox(
                                   alignment: Alignment.centerLeft,
@@ -1195,8 +1280,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                                       color: progress < 30
                                           ? AppColors.error
                                           : progress < 70
-                                              ? AppColors.warning
-                                              : AppColors.success,
+                                          ? AppColors.warning
+                                          : AppColors.success,
                                     ),
                                   ),
                                 ),
@@ -1207,7 +1292,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                         // Kick button for PM/Admin
                         if (canKick)
                           IconButton(
-                            icon: const Icon(Icons.person_remove, color: AppColors.error),
+                            icon: const Icon(
+                              Icons.person_remove,
+                              color: AppColors.error,
+                            ),
                             onPressed: () => _kickMember(member),
                             tooltip: 'Remove from project',
                           ),
@@ -1251,18 +1339,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   ///   - If project has no PM, admin can add tasks
   bool _canAddTask() {
     final isSoloMode = widget.project['mode'] == 'solo';
-    
+
     // Solo mode - ONLY admin can add tasks
     if (isSoloMode) {
       return _isAdmin;
     }
-    
+
     // Multiplayer mode
     // Admin can add if no PM exists
     if (_isAdmin && !_hasProjectManager) {
       return true;
     }
-    
+
     // PM can add in multiplayer
     return _isPM;
   }
@@ -1274,7 +1362,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         backgroundColor: AppColors.background,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-          side: const BorderSide(color: AppColors.border, width: AppConstants.borderWidth),
+          side: const BorderSide(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
         ),
         title: const Text('Complete Project?'),
         content: const Text(
@@ -1284,14 +1375,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+            child: const Text(
+              'Complete',
+              style: TextStyle(color: Colors.white),
             ),
-            child: const Text('Complete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1333,9 +1428,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -1347,7 +1442,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         backgroundColor: AppColors.background,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-          side: const BorderSide(color: AppColors.border, width: AppConstants.borderWidth),
+          side: const BorderSide(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
         ),
         title: const Text('Leave Project?'),
         content: const Text(
@@ -1357,13 +1455,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Leave', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -1374,7 +1473,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
     try {
       final userId = context.read<AuthProvider>().currentUser?.id;
-      
+
       await SupabaseService.client
           .from('user_projects')
           .delete()
@@ -1389,9 +1488,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -1399,14 +1498,17 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   Future<void> _kickMember(Map<String, dynamic> member) async {
     final profile = member['profile'] as Map<String, dynamic>?;
     final memberName = profile?['name'] ?? 'User';
-    
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.background,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-          side: const BorderSide(color: AppColors.border, width: AppConstants.borderWidth),
+          side: const BorderSide(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
         ),
         title: const Text('Remove Member?'),
         content: Text(
@@ -1416,13 +1518,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Remove', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -1433,16 +1536,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
     try {
       final memberId = member['user_id'];
-      
+
       await SupabaseService.client
           .from('tasks')
-          .update({
-            'claimed_by_user_id': null,
-            'is_claimed': false,
-          })
+          .update({'claimed_by_user_id': null, 'is_claimed': false})
           .eq('project_id', widget.project['id'])
           .eq('claimed_by_user_id', memberId);
-      
+
       await SupabaseService.client
           .from('user_projects')
           .delete()
@@ -1457,9 +1557,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -1474,7 +1574,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   // Calculate progress for specific role (tasks assigned to that role, NOT general tasks)
   double _calculateRoleProgress(String? userRole) {
     if (_tasks.isEmpty || userRole == null) return 0.0;
-    
+
     // PM counts all tasks (including general tasks)
     // Other roles count ONLY tasks assigned to their role (NOT general tasks)
     final isPMRole = userRole == 'pm' || userRole == 'project_manager';
@@ -1484,10 +1584,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
             final assignedRole = t['assigned_role'] as String?;
             return assignedRole == userRole; // NOT NULL, must match exactly
           }).toList();
-    
+
     if (roleTasks.isEmpty) return 0.0;
-    
-    final completedRoleTasks = roleTasks.where((t) => t['status'] == 'done').length;
+
+    final completedRoleTasks = roleTasks
+        .where((t) => t['status'] == 'done')
+        .length;
     return (completedRoleTasks / roleTasks.length) * 100;
   }
 }
