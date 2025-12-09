@@ -11,7 +11,7 @@ import 'project_detail_screen.dart';
 
 class ProjectsScreen extends StatefulWidget {
   final ValueNotifier<int>? refreshTrigger;
-  
+
   const ProjectsScreen({Key? key, this.refreshTrigger}) : super(key: key);
 
   @override
@@ -28,7 +28,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserProjects();
-    
+
     // Listen to refresh trigger from MainNavigation
     widget.refreshTrigger?.addListener(_onRefreshTriggered);
   }

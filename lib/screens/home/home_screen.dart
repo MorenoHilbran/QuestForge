@@ -10,7 +10,7 @@ import '../projects/join_project_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ValueNotifier<int>? refreshTrigger;
-  
+
   const HomeScreen({Key? key, this.refreshTrigger}) : super(key: key);
 
   @override
@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadProjects();
-    
+
     // Listen to refresh trigger from MainNavigation
     widget.refreshTrigger?.addListener(_onRefreshTriggered);
   }
@@ -245,7 +245,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         if (result == true && mounted) {
           _loadProjects(); // Refresh to show joined status
-          widget.refreshTrigger?.value = (widget.refreshTrigger?.value ?? 0) + 1; // Notify other screens
+          widget.refreshTrigger?.value =
+              (widget.refreshTrigger?.value ?? 0) + 1; // Notify other screens
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Project joined successfully!')),
           );

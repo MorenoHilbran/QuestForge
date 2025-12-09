@@ -39,8 +39,12 @@ class _MainNavigationState extends State<MainNavigation> {
     final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     final List<Widget> screens = [
-      isAdmin ? const AdminMonitoringScreen() : HomeScreen(refreshTrigger: _refreshTrigger),
-      isAdmin ? const AdminManageProjectsScreen() : ProjectsScreen(refreshTrigger: _refreshTrigger),
+      isAdmin
+          ? const AdminMonitoringScreen()
+          : HomeScreen(refreshTrigger: _refreshTrigger),
+      isAdmin
+          ? const AdminManageProjectsScreen()
+          : ProjectsScreen(refreshTrigger: _refreshTrigger),
       const ProfileScreen(),
     ];
 
