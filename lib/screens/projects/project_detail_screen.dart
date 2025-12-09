@@ -249,12 +249,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     String? assignedRole;
     final isMultiplayer = widget.project['mode'] == 'multiplayer';
 
-    // Get available roles from team members
-    final availableRoles = _teamMembers
-        .map((m) => m['role'] as String?)
-        .where((r) => r != null && r != 'project_manager')
-        .toSet()
-        .toList();
+    // Get required roles from project (defined by admin when creating project)
+    // This allows PM to create tasks for roles even before anyone joins with that role
+    List<String> availableRoles = [];
+    if (isMultiplayer && widget.project['required_roles'] != null) {
+      final requiredRoles = widget.project['required_roles'];
+      if (requiredRoles is List) {
+        availableRoles = requiredRoles
+            .map((r) => r.toString())
+            .where((r) => r != 'pm' && r != 'project_manager')
+            .toList();
+      }
+    }
 
     showDialog(
       context: context,
