@@ -292,102 +292,103 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
               const SizedBox(height: AppConstants.spacingL),
               Flexible(
                 child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              NeoTextField(
-                label: 'Task Title',
-                controller: titleController,
-                hintText: 'Task title',
-              ),
-              const SizedBox(height: AppConstants.spacingM),
-              NeoTextField(
-                label: 'Description',
-                controller: descController,
-                hintText: 'Task description',
-                maxLines: 3,
-              ),
-              const SizedBox(height: AppConstants.spacingM),
-              const Text(
-                'Priority',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppConstants.spacingS),
-              StatefulBuilder(
-                builder: (context, setStateDialog) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Priority Selection
-                    ...['low', 'medium', 'high'].map((p) {
-                      return RadioListTile<String>(
-                        title: Text(p.toUpperCase()),
-                        value: p,
-                        groupValue: priority,
-                        onChanged: (value) {
-                          setStateDialog(() => priority = value!);
-                        },
-                      );
-                    }).toList(),
-
-                    // Role Assignment (only for multiplayer)
-                    if (isMultiplayer && availableRoles.isNotEmpty) ...[
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NeoTextField(
+                        label: 'Task Title',
+                        controller: titleController,
+                        hintText: 'Task title',
+                      ),
                       const SizedBox(height: AppConstants.spacingM),
-                      const Divider(),
+                      NeoTextField(
+                        label: 'Description',
+                        controller: descController,
+                        hintText: 'Task description',
+                        maxLines: 3,
+                      ),
                       const SizedBox(height: AppConstants.spacingM),
                       const Text(
-                        'Assign to Role',
+                        'Priority',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: AppConstants.spacingS),
-                      DropdownButtonFormField<String>(
-                        value: assignedRole,
-                        decoration: InputDecoration(
-                          hintText: 'Select role (optional)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppConstants.borderRadius,
-                            ),
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: null,
-                            child: Text('Any role'),
-                          ),
-                          ...availableRoles.map(
-                            (role) => DropdownMenuItem<String>(
-                              value: role,
-                              child: Text(
-                                AppConstants.projectRoleLabels[role!] ?? role,
+                      StatefulBuilder(
+                        builder: (context, setStateDialog) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Priority Selection
+                            ...['low', 'medium', 'high'].map((p) {
+                              return RadioListTile<String>(
+                                title: Text(p.toUpperCase()),
+                                value: p,
+                                groupValue: priority,
+                                onChanged: (value) {
+                                  setStateDialog(() => priority = value!);
+                                },
+                              );
+                            }).toList(),
+
+                            // Role Assignment (only for multiplayer)
+                            if (isMultiplayer && availableRoles.isNotEmpty) ...[
+                              const SizedBox(height: AppConstants.spacingM),
+                              const Divider(),
+                              const SizedBox(height: AppConstants.spacingM),
+                              const Text(
+                                'Assign to Role',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setStateDialog(() => assignedRole = value);
-                        },
-                      ),
-                      const SizedBox(height: AppConstants.spacingS),
-                      const Text(
-                        'Users with this role can claim this task',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+                              const SizedBox(height: AppConstants.spacingS),
+                              DropdownButtonFormField<String>(
+                                value: assignedRole,
+                                decoration: InputDecoration(
+                                  hintText: 'Select role (optional)',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppConstants.borderRadius,
+                                    ),
+                                  ),
+                                ),
+                                items: [
+                                  const DropdownMenuItem<String>(
+                                    value: null,
+                                    child: Text('Any role'),
+                                  ),
+                                  ...availableRoles.map(
+                                    (role) => DropdownMenuItem<String>(
+                                      value: role,
+                                      child: Text(
+                                        AppConstants.projectRoleLabels[role!] ??
+                                            role,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setStateDialog(() => assignedRole = value);
+                                },
+                              ),
+                              const SizedBox(height: AppConstants.spacingS),
+                              const Text(
+                                'Users with this role can claim this task',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-            ],
-          ),
+                  ),
                 ),
               ),
               const SizedBox(height: AppConstants.spacingL),
@@ -403,7 +404,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                     onPressed: () async {
                       if (titleController.text.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Task title is required')),
+                          const SnackBar(
+                            content: Text('Task title is required'),
+                          ),
                         );
                         return;
                       }
@@ -418,7 +421,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                           'assigned_role': assignedRole,
                         };
 
-                        await SupabaseService.client.from('tasks').insert(taskData);
+                        await SupabaseService.client
+                            .from('tasks')
+                            .insert(taskData);
 
                         Navigator.pop(context);
                         _loadData();
@@ -450,7 +455,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
   void _editTask(Map<String, dynamic> task) {
     final titleController = TextEditingController(text: task['title']);
-    final descController = TextEditingController(text: task['description'] ?? '');
+    final descController = TextEditingController(
+      text: task['description'] ?? '',
+    );
     String priority = task['priority'] ?? 'medium';
     String? assignedRole = task['assigned_role'];
     final isMultiplayer = widget.project['mode'] == 'multiplayer';
@@ -497,102 +504,103 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
               const SizedBox(height: AppConstants.spacingL),
               Flexible(
                 child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              NeoTextField(
-                label: 'Task Title',
-                controller: titleController,
-                hintText: 'Task title',
-              ),
-              const SizedBox(height: AppConstants.spacingM),
-              NeoTextField(
-                label: 'Description',
-                controller: descController,
-                hintText: 'Task description',
-                maxLines: 3,
-              ),
-              const SizedBox(height: AppConstants.spacingM),
-              const Text(
-                'Priority',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppConstants.spacingS),
-              StatefulBuilder(
-                builder: (context, setStateDialog) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Priority Selection
-                    ...['low', 'medium', 'high'].map((p) {
-                      return RadioListTile<String>(
-                        title: Text(p.toUpperCase()),
-                        value: p,
-                        groupValue: priority,
-                        onChanged: (value) {
-                          setStateDialog(() => priority = value!);
-                        },
-                      );
-                    }).toList(),
-
-                    // Role Assignment (only for multiplayer)
-                    if (isMultiplayer && availableRoles.isNotEmpty) ...[
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NeoTextField(
+                        label: 'Task Title',
+                        controller: titleController,
+                        hintText: 'Task title',
+                      ),
                       const SizedBox(height: AppConstants.spacingM),
-                      const Divider(),
+                      NeoTextField(
+                        label: 'Description',
+                        controller: descController,
+                        hintText: 'Task description',
+                        maxLines: 3,
+                      ),
                       const SizedBox(height: AppConstants.spacingM),
                       const Text(
-                        'Assign to Role',
+                        'Priority',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: AppConstants.spacingS),
-                      DropdownButtonFormField<String>(
-                        value: assignedRole,
-                        decoration: InputDecoration(
-                          hintText: 'Select role (optional)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppConstants.borderRadius,
-                            ),
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: null,
-                            child: Text('Any role'),
-                          ),
-                          ...availableRoles.map(
-                            (role) => DropdownMenuItem<String>(
-                              value: role,
-                              child: Text(
-                                AppConstants.projectRoleLabels[role!] ?? role,
+                      StatefulBuilder(
+                        builder: (context, setStateDialog) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Priority Selection
+                            ...['low', 'medium', 'high'].map((p) {
+                              return RadioListTile<String>(
+                                title: Text(p.toUpperCase()),
+                                value: p,
+                                groupValue: priority,
+                                onChanged: (value) {
+                                  setStateDialog(() => priority = value!);
+                                },
+                              );
+                            }).toList(),
+
+                            // Role Assignment (only for multiplayer)
+                            if (isMultiplayer && availableRoles.isNotEmpty) ...[
+                              const SizedBox(height: AppConstants.spacingM),
+                              const Divider(),
+                              const SizedBox(height: AppConstants.spacingM),
+                              const Text(
+                                'Assign to Role',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setStateDialog(() => assignedRole = value);
-                        },
-                      ),
-                      const SizedBox(height: AppConstants.spacingS),
-                      const Text(
-                        'Users with this role can claim this task',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+                              const SizedBox(height: AppConstants.spacingS),
+                              DropdownButtonFormField<String>(
+                                value: assignedRole,
+                                decoration: InputDecoration(
+                                  hintText: 'Select role (optional)',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppConstants.borderRadius,
+                                    ),
+                                  ),
+                                ),
+                                items: [
+                                  const DropdownMenuItem<String>(
+                                    value: null,
+                                    child: Text('Any role'),
+                                  ),
+                                  ...availableRoles.map(
+                                    (role) => DropdownMenuItem<String>(
+                                      value: role,
+                                      child: Text(
+                                        AppConstants.projectRoleLabels[role!] ??
+                                            role,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setStateDialog(() => assignedRole = value);
+                                },
+                              ),
+                              const SizedBox(height: AppConstants.spacingS),
+                              const Text(
+                                'Users with this role can claim this task',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-            ],
-          ),
+                  ),
                 ),
               ),
               const SizedBox(height: AppConstants.spacingL),
@@ -608,7 +616,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                     onPressed: () async {
                       if (titleController.text.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Task title is required')),
+                          const SnackBar(
+                            content: Text('Task title is required'),
+                          ),
                         );
                         return;
                       }
@@ -759,9 +769,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                 );
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -1402,9 +1410,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                               value: 'delete',
                               child: Row(
                                 children: [
-                                  Icon(Icons.delete, size: 18, color: AppColors.error),
+                                  Icon(
+                                    Icons.delete,
+                                    size: 18,
+                                    color: AppColors.error,
+                                  ),
                                   SizedBox(width: 8),
-                                  Text('Delete', style: TextStyle(color: AppColors.error)),
+                                  Text(
+                                    'Delete',
+                                    style: TextStyle(color: AppColors.error),
+                                  ),
                                 ],
                               ),
                             ),
