@@ -18,6 +18,17 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
+  final ValueNotifier<int> _refreshTrigger = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _refreshTrigger.dispose();
+    super.dispose();
+  }
+
+  void _triggerRefresh() {
+    _refreshTrigger.value++;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,8 +39,8 @@ class _MainNavigationState extends State<MainNavigation> {
     final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     final List<Widget> screens = [
-      isAdmin ? const AdminMonitoringScreen() : const HomeScreen(),
-      isAdmin ? const AdminManageProjectsScreen() : const ProjectsScreen(),
+      isAdmin ? const AdminMonitoringScreen() : HomeScreen(refreshTrigger: _refreshTrigger),
+      isAdmin ? const AdminManageProjectsScreen() : ProjectsScreen(refreshTrigger: _refreshTrigger),
       const ProfileScreen(),
     ];
 

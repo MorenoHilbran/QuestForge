@@ -10,7 +10,9 @@ import '../../widgets/common/neo_progress_bar.dart';
 import 'project_detail_screen.dart';
 
 class ProjectsScreen extends StatefulWidget {
-  const ProjectsScreen({Key? key}) : super(key: key);
+  final ValueNotifier<int>? refreshTrigger;
+  
+  const ProjectsScreen({Key? key, this.refreshTrigger}) : super(key: key);
 
   @override
   State<ProjectsScreen> createState() => _ProjectsScreenState();
@@ -26,10 +28,20 @@ class _ProjectsScreenState extends State<ProjectsScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserProjects();
+    
+    // Listen to refresh trigger from MainNavigation
+    widget.refreshTrigger?.addListener(_onRefreshTriggered);
+  }
+
+  void _onRefreshTriggered() {
+    if (mounted) {
+      _loadUserProjects();
+    }
   }
 
   @override
   void dispose() {
+    widget.refreshTrigger?.removeListener(_onRefreshTriggered);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

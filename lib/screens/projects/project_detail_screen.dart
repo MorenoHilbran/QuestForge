@@ -1291,8 +1291,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                     ],
                   ],
 
-                  // Complete Project Button (PM only, when all tasks done)
-                  if (_isPM && _canCompleteProject()) ...[
+                  // Complete Project Button (PM or Admin, when all tasks done)
+                  if ((_isPM || _isAdmin) && _canCompleteProject()) ...[
                     const SizedBox(height: AppConstants.spacingL),
                     const Divider(color: AppColors.border, thickness: 2),
                     const SizedBox(height: AppConstants.spacingL),

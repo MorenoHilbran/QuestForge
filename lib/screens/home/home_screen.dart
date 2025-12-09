@@ -9,7 +9,9 @@ import '../../widgets/common/neo_card.dart';
 import '../projects/join_project_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  final ValueNotifier<int>? refreshTrigger;
+  
+  const HomeScreen({Key? key, this.refreshTrigger}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -26,10 +28,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadProjects();
+    
+    // Listen to refresh trigger from MainNavigation
+    widget.refreshTrigger?.addListener(_onRefreshTriggered);
+  }
+
+  void _onRefreshTriggered() {
+    if (mounted) {
+      _loadProjects();
+    }
   }
 
   @override
   void dispose() {
+    widget.refreshTrigger?.removeListener(_onRefreshTriggered);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -233,6 +245,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         if (result == true && mounted) {
           _loadProjects(); // Refresh to show joined status
+          widget.refreshTrigger?.value = (widget.refreshTrigger?.value ?? 0) + 1; // Notify other screens
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Project joined successfully!')),
           );
