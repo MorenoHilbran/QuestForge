@@ -264,7 +264,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => Dialog(
         backgroundColor: AppColors.background,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
@@ -273,14 +273,25 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
             width: AppConstants.borderWidth,
           ),
         ),
-        title: const Text(
-          'Add New Task',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        content: SingleChildScrollView(
+        child: Container(
+          width: 600,
+          constraints: const BoxConstraints(maxHeight: 700),
+          padding: const EdgeInsets.all(AppConstants.spacingL),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Add New Task',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingL),
+              Flexible(
+                child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,6 +388,346 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
               ),
             ],
           ),
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingL),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: AppConstants.spacingM),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (titleController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Task title is required')),
+                        );
+                        return;
+                      }
+
+                      try {
+                        final taskData = {
+                          'project_id': widget.project['id'],
+                          'title': titleController.text.trim(),
+                          'description': descController.text.trim(),
+                          'priority': priority,
+                          'status': 'todo',
+                          'assigned_role': assignedRole,
+                        };
+
+                        await SupabaseService.client.from('tasks').insert(taskData);
+
+                        Navigator.pop(context);
+                        _loadData();
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Task created successfully!'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error creating task: $e')),
+                        );
+                      }
+                    },
+                    child: const Text('Create'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _editTask(Map<String, dynamic> task) {
+    final titleController = TextEditingController(text: task['title']);
+    final descController = TextEditingController(text: task['description'] ?? '');
+    String priority = task['priority'] ?? 'medium';
+    String? assignedRole = task['assigned_role'];
+    final isMultiplayer = widget.project['mode'] == 'multiplayer';
+
+    // Get required roles from project
+    List<String> availableRoles = [];
+    if (isMultiplayer && widget.project['required_roles'] != null) {
+      final requiredRoles = widget.project['required_roles'];
+      if (requiredRoles is List) {
+        availableRoles = requiredRoles
+            .map((r) => r.toString())
+            .where((r) => r != 'pm' && r != 'project_manager')
+            .toList();
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: AppColors.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          side: const BorderSide(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
+        ),
+        child: Container(
+          width: 600,
+          constraints: const BoxConstraints(maxHeight: 700),
+          padding: const EdgeInsets.all(AppConstants.spacingL),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Edit Task',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingL),
+              Flexible(
+                child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              NeoTextField(
+                label: 'Task Title',
+                controller: titleController,
+                hintText: 'Task title',
+              ),
+              const SizedBox(height: AppConstants.spacingM),
+              NeoTextField(
+                label: 'Description',
+                controller: descController,
+                hintText: 'Task description',
+                maxLines: 3,
+              ),
+              const SizedBox(height: AppConstants.spacingM),
+              const Text(
+                'Priority',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingS),
+              StatefulBuilder(
+                builder: (context, setStateDialog) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Priority Selection
+                    ...['low', 'medium', 'high'].map((p) {
+                      return RadioListTile<String>(
+                        title: Text(p.toUpperCase()),
+                        value: p,
+                        groupValue: priority,
+                        onChanged: (value) {
+                          setStateDialog(() => priority = value!);
+                        },
+                      );
+                    }).toList(),
+
+                    // Role Assignment (only for multiplayer)
+                    if (isMultiplayer && availableRoles.isNotEmpty) ...[
+                      const SizedBox(height: AppConstants.spacingM),
+                      const Divider(),
+                      const SizedBox(height: AppConstants.spacingM),
+                      const Text(
+                        'Assign to Role',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: AppConstants.spacingS),
+                      DropdownButtonFormField<String>(
+                        value: assignedRole,
+                        decoration: InputDecoration(
+                          hintText: 'Select role (optional)',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.borderRadius,
+                            ),
+                          ),
+                        ),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('Any role'),
+                          ),
+                          ...availableRoles.map(
+                            (role) => DropdownMenuItem<String>(
+                              value: role,
+                              child: Text(
+                                AppConstants.projectRoleLabels[role!] ?? role,
+                              ),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setStateDialog(() => assignedRole = value);
+                        },
+                      ),
+                      const SizedBox(height: AppConstants.spacingS),
+                      const Text(
+                        'Users with this role can claim this task',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingL),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: AppConstants.spacingM),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (titleController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Task title is required')),
+                        );
+                        return;
+                      }
+
+                      try {
+                        final updateData = {
+                          'title': titleController.text.trim(),
+                          'description': descController.text.trim(),
+                          'priority': priority,
+                          'assigned_role': assignedRole,
+                        };
+
+                        await SupabaseService.client
+                            .from('tasks')
+                            .update(updateData)
+                            .eq('id', task['id']);
+
+                        Navigator.pop(context);
+                        _loadData();
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Task updated successfully!'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error updating task: $e')),
+                        );
+                      }
+                    },
+                    child: const Text('Update'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _deleteTask(Map<String, dynamic> task) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          side: const BorderSide(
+            color: AppColors.border,
+            width: AppConstants.borderWidth,
+          ),
+        ),
+        title: const Text(
+          'Delete Task',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Are you sure you want to delete this task?',
+              style: TextStyle(color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: AppConstants.spacingM),
+            Container(
+              padding: const EdgeInsets.all(AppConstants.spacingM),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                border: Border.all(
+                  color: AppColors.error,
+                  width: AppConstants.borderWidth,
+                ),
+                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    task['title'] ?? 'Untitled Task',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (task['description'] != null &&
+                      task['description'].toString().isNotEmpty) ...[
+                    const SizedBox(height: AppConstants.spacingS),
+                    Text(
+                      task['description'],
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: AppConstants.spacingM),
+            const Text(
+              'This action cannot be undone.',
+              style: TextStyle(
+                color: AppColors.error,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -385,24 +736,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           ),
           ElevatedButton(
             onPressed: () async {
-              if (titleController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Task title is required')),
-                );
-                return;
-              }
-
               try {
-                final taskData = {
-                  'project_id': widget.project['id'],
-                  'title': titleController.text.trim(),
-                  'description': descController.text.trim(),
-                  'priority': priority,
-                  'status': 'todo',
-                  'assigned_role': assignedRole, // Can be null for 'any role'
-                };
-
-                await SupabaseService.client.from('tasks').insert(taskData);
+                await SupabaseService.client
+                    .from('tasks')
+                    .delete()
+                    .eq('id', task['id']);
 
                 Navigator.pop(context);
                 _loadData();
@@ -410,18 +748,21 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Task created successfully!'),
+                      content: Text('Task deleted successfully!'),
                       backgroundColor: AppColors.success,
                     ),
                   );
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error creating task: $e')),
+                  SnackBar(content: Text('Error deleting task: $e')),
                 );
               }
             },
-            child: const Text('Create'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -1031,6 +1372,45 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                           border: Border.all(color: AppColors.border, width: 2),
                         ),
                       ),
+                      // Edit/Delete menu (PM/Admin only)
+                      if (_isPM || _isAdmin) ...[
+                        PopupMenuButton<String>(
+                          icon: const Icon(
+                            Icons.more_vert,
+                            size: 20,
+                            color: AppColors.textSecondary,
+                          ),
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _editTask(task);
+                            } else if (value == 'delete') {
+                              _deleteTask(task);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Edit'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete, size: 18, color: AppColors.error),
+                                  SizedBox(width: 8),
+                                  Text('Delete', style: TextStyle(color: AppColors.error)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                   if (task['description'] != null &&
