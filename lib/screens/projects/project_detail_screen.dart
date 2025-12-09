@@ -1322,19 +1322,25 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     final isSoloMode = widget.project['mode'] == 'solo';
     final isMultiplayer = widget.project['mode'] == 'multiplayer';
 
-    // User can update if:
-    // 1. Solo mode, OR
-    // 2. PM/Admin, OR
-    // 3. Task is assigned to their role (or no role assigned), OR
-    // 4. They already claimed this task
-    final roleMatches = assignedRole == null || assignedRole == userRole;
+    // Permission check (MUST match _toggleTaskStatus logic):
+    // - Admin can always update
+    // - PM can always update (including general tasks)
+    // - Solo mode - anyone can update
+    // - Multiplayer:
+    //   - General tasks (assigned_role = null) ONLY PM can update
+    //   - Role-specific tasks: only matching role can update
+    // - Or task already assigned/claimed to user
+    final isGeneralTask = assignedRole == null;
+    final isPMRole = _isPM || userRole == 'pm' || userRole == 'project_manager';
+    final roleMatches = !isGeneralTask && assignedRole == userRole;
+
     final canUpdate =
-        isSoloMode ||
         _isAdmin ||
-        _isPM ||
-        (task['assigned_user_id'] == userId) ||
-        (task['claimed_by_user_id'] == userId) ||
-        (isMultiplayer && roleMatches);
+        isPMRole ||
+        task['assigned_user_id'] == userId ||
+        task['claimed_by_user_id'] == userId ||
+        isSoloMode ||
+        roleMatches;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
