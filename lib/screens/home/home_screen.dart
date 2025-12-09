@@ -35,38 +35,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final userId = context.read<AuthProvider>().currentUser?.id;
-      
+
       // V2: Load projects with joined users info and project status
       final response = _selectedDifficulty == 'all'
           ? await SupabaseService.client
-              .from('projects')
-              .select('*, user_projects(user_id, status, role, approval_status)')
-              .isFilter('deleted_at', null)
-              .order('created_at', ascending: false)
+                .from('projects')
+                .select(
+                  '*, user_projects(user_id, status, role, approval_status)',
+                )
+                .isFilter('deleted_at', null)
+                .order('created_at', ascending: false)
           : await SupabaseService.client
-              .from('projects')
-              .select('*, user_projects(user_id, status, role, approval_status)')
-              .eq('difficulty', _selectedDifficulty)
-              .isFilter('deleted_at', null)
-              .order('created_at', ascending: false);
-      
+                .from('projects')
+                .select(
+                  '*, user_projects(user_id, status, role, approval_status)',
+                )
+                .eq('difficulty', _selectedDifficulty)
+                .isFilter('deleted_at', null)
+                .order('created_at', ascending: false);
+
       final projectsData = (response as List).cast<Map<String, dynamic>>();
-      
+
       // Process each project - status is now directly from projects table
-      final projects = projectsData.map((data) => ProjectModel.fromJson(data)).toList();
-      
+      final projects = projectsData
+          .map((data) => ProjectModel.fromJson(data))
+          .toList();
+
       // Check which projects user has joined
       final joinedMap = <String, bool>{};
       if (userId != null) {
         for (var project in projects) {
           if (project.joinedUsers != null) {
-            joinedMap[project.id] = project.joinedUsers!.any((user) => user['id'] == userId);
+            joinedMap[project.id] = project.joinedUsers!.any(
+              (user) => user['id'] == userId,
+            );
           } else {
             joinedMap[project.id] = false;
           }
         }
       }
-      
+
       setState(() {
         _projects = projects;
         _userJoinedProjects = joinedMap;
@@ -75,9 +83,9 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading projects: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading projects: $e')));
       }
     }
   }
@@ -142,10 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
           boxShadow: [
-            BoxShadow(
-              color: AppColors.border,
-              offset: const Offset(4, 4),
-            ),
+            BoxShadow(color: AppColors.border, offset: const Offset(4, 4)),
           ],
         ),
         child: const Row(
@@ -181,11 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.people,
-              color: AppColors.textSecondary,
-              size: 20,
-            ),
+            Icon(Icons.people, color: AppColors.textSecondary, size: 20),
             SizedBox(width: 8),
             Text(
               'Project Full',
@@ -209,12 +210,10 @@ class _HomeScreenState extends State<HomeScreen> {
             .select('*, user_projects(user_id, role)')
             .eq('id', project.id)
             .single();
-        
+
         final result = await Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => JoinProjectScreen(
-              project: completeProject,
-            ),
+            builder: (_) => JoinProjectScreen(project: completeProject),
           ),
         );
 
@@ -235,10 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
           boxShadow: [
-            BoxShadow(
-              color: AppColors.border,
-              offset: const Offset(4, 4),
-            ),
+            BoxShadow(color: AppColors.border, offset: const Offset(4, 4)),
           ],
         ),
         child: const Row(
@@ -292,10 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: AppColors.border,
-            height: 3,
-          ),
+          child: Container(color: AppColors.border, height: 3),
         ),
       ),
       body: Column(
@@ -324,22 +317,22 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _projects.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No projects available yet',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadProjects,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(AppConstants.spacingM),
-                          itemCount: _projects.length,
-                          itemBuilder: (context, index) {
-                            return _buildProjectCard(_projects[index]);
-                          },
-                        ),
-                      ),
+                ? const Center(
+                    child: Text(
+                      'No projects available yet',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadProjects,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(AppConstants.spacingM),
+                      itemCount: _projects.length,
+                      itemBuilder: (context, index) {
+                        return _buildProjectCard(_projects[index]);
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -348,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _selectedDifficulty == value;
-    
+
     // Get color based on difficulty
     Color chipColor;
     if (value == 'all') {
@@ -368,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
           chipColor = isSelected ? AppColors.primary : Colors.white;
       }
     }
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -390,12 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
           boxShadow: isSelected
-              ? [
-                  const BoxShadow(
-                    color: AppColors.shadow,
-                    offset: Offset(4, 4),
-                  ),
-                ]
+              ? [const BoxShadow(color: AppColors.shadow, offset: Offset(4, 4))]
               : null,
         ),
         child: Text(
@@ -428,215 +416,223 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-              // Thumbnail
-              if (project.thumbnailUrl != null && project.thumbnailUrl!.isNotEmpty)
-                Container(
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppColors.border.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+            // Thumbnail
+            if (project.thumbnailUrl != null &&
+                project.thumbnailUrl!.isNotEmpty)
+              Container(
+                height: 150,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.border.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.borderRadius,
                   ),
-                  child: Image.network(
-                    project.thumbnailUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.image_not_supported,
-                      size: 48,
-                      color: AppColors.textSecondary,
+                ),
+                child: Image.network(
+                  project.thumbnailUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.image_not_supported,
+                    size: 48,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            if (project.thumbnailUrl != null &&
+                project.thumbnailUrl!.isNotEmpty)
+              const SizedBox(height: AppConstants.spacingM),
+
+            // Title and Joined Users
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    project.title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
-              if (project.thumbnailUrl != null && project.thumbnailUrl!.isNotEmpty)
-                const SizedBox(height: AppConstants.spacingM),
-
-              // Title and Joined Users
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      project.title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  // Show joined users avatars (multiplayer only)
-                  if (project.mode == 'multiplayer' && 
-                      project.joinedUsers != null && 
-                      project.joinedUsers!.isNotEmpty) ...[
-                    const SizedBox(width: AppConstants.spacingS),
-                    Row(
-                      children: [
-                        // Show up to 3 avatars
-                        ...project.joinedUsers!.take(3).map((user) {
-                          return Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: AppColors.primary,
-                              backgroundImage: user['avatar_url'] != null
-                                  ? NetworkImage(user['avatar_url'])
-                                  : null,
-                              child: user['avatar_url'] == null
-                                  ? Text(
-                                      (user['name'] ?? 'U')[0].toUpperCase(),
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                          );
-                        }),
-                        // Show +N if more than 3 users
-                        if (project.joinedUsers!.length > 3)
-                          Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: AppColors.textSecondary,
-                              child: Text(
-                                '+${project.joinedUsers!.length - 3}',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
+                // Show joined users avatars (multiplayer only)
+                if (project.mode == 'multiplayer' &&
+                    project.joinedUsers != null &&
+                    project.joinedUsers!.isNotEmpty) ...[
+                  const SizedBox(width: AppConstants.spacingS),
+                  Row(
+                    children: [
+                      // Show up to 3 avatars
+                      ...project.joinedUsers!.take(3).map((user) {
+                        return Container(
+                          margin: const EdgeInsets.only(left: 4),
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.primary,
+                            backgroundImage: user['avatar_url'] != null
+                                ? NetworkImage(user['avatar_url'])
+                                : null,
+                            child: user['avatar_url'] == null
+                                ? Text(
+                                    (user['name'] ?? 'U')[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        );
+                      }),
+                      // Show +N if more than 3 users
+                      if (project.joinedUsers!.length > 3)
+                        Container(
+                          margin: const EdgeInsets.only(left: 4),
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.textSecondary,
+                            child: Text(
+                              '+${project.joinedUsers!.length - 3}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                  ],
+                        ),
+                    ],
+                  ),
                 ],
-              ),
-              const SizedBox(height: AppConstants.spacingS),
+              ],
+            ),
+            const SizedBox(height: AppConstants.spacingS),
 
-              // Description
-              Text(
-                project.description,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
+            // Description
+            Text(
+              project.description,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: AppConstants.spacingM),
+
+            // Badges Row: Difficulty and Completed
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.spacingM,
+                    vertical: AppConstants.spacingS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: difficultyColor,
+                    border: Border.all(
+                      color: AppColors.border,
+                      width: AppConstants.borderWidth,
+                    ),
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.borderRadius,
+                    ),
+                  ),
+                  child: Text(
+                    project.difficulty.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: AppConstants.spacingM),
-
-              // Badges Row: Difficulty and Completed
-              Row(
-                children: [
+                if (project.isCompleted) ...[
+                  const SizedBox(width: AppConstants.spacingS),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppConstants.spacingM,
                       vertical: AppConstants.spacingS,
                     ),
                     decoration: BoxDecoration(
-                      color: difficultyColor,
+                      color: AppColors.success,
                       border: Border.all(
                         color: AppColors.border,
                         width: AppConstants.borderWidth,
                       ),
-                      borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                    ),
-                    child: Text(
-                      project.difficulty.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.borderRadius,
                       ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.check_circle, size: 14, color: Colors.black),
+                        SizedBox(width: 4),
+                        Text(
+                          'COMPLETED',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  if (project.isCompleted) ...[
-                    const SizedBox(width: AppConstants.spacingS),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppConstants.spacingM,
-                        vertical: AppConstants.spacingS,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.success,
-                        border: Border.all(
-                          color: AppColors.border,
-                          width: AppConstants.borderWidth,
-                        ),
-                        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.check_circle, size: 14, color: Colors.black),
-                          SizedBox(width: 4),
-                          Text(
-                            'COMPLETED',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
-              ),
-              
-              const SizedBox(height: AppConstants.spacingM),
+              ],
+            ),
 
-              // User count and Join Status/Button
-              Row(
-                children: [
-                  // User count (multiplayer only)
-                  if (project.mode == 'multiplayer') ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppConstants.spacingM,
-                        vertical: AppConstants.spacingS,
+            const SizedBox(height: AppConstants.spacingM),
+
+            // User count and Join Status/Button
+            Row(
+              children: [
+                // User count (multiplayer only)
+                if (project.mode == 'multiplayer') ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.spacingM,
+                      vertical: AppConstants.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      border: Border.all(
+                        color: AppColors.border,
+                        width: AppConstants.borderWidth,
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary,
-                        border: Border.all(
-                          color: AppColors.border,
-                          width: AppConstants.borderWidth,
-                        ),
-                        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.people, size: 16, color: Colors.black),
-                          const SizedBox(width: 4),
-                          Text(
-                            project.calculatedMaxMembers > 0
-                                ? '${project.joinedUsers?.length ?? 0}/${project.calculatedMaxMembers}'
-                                : '${project.joinedUsers?.length ?? 0}',
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.borderRadius,
                       ),
                     ),
-                    const SizedBox(width: AppConstants.spacingS),
-                  ],
-                  
-                  // Join Button or Joined Status
-                  Expanded(
-                    child: _buildJoinButton(project),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.people, size: 16, color: Colors.black),
+                        const SizedBox(width: 4),
+                        Text(
+                          project.calculatedMaxMembers > 0
+                              ? '${project.joinedUsers?.length ?? 0}/${project.calculatedMaxMembers}'
+                              : '${project.joinedUsers?.length ?? 0}',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: AppConstants.spacingS),
                 ],
-              ),
-            ],
+
+                // Join Button or Joined Status
+                Expanded(child: _buildJoinButton(project)),
+              ],
+            ),
+          ],
         ),
       ),
     );

@@ -156,7 +156,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     final isGeneralTask = assignedRole == null;
     final isPMRole = _isPM || userRole == 'pm' || userRole == 'project_manager';
     final roleMatches = !isGeneralTask && assignedRole == userRole;
-    final isJoinedSolo = isSoloMode && _userProject != null; // Solo: just need to be joined
+    final isJoinedSolo =
+        isSoloMode && _userProject != null; // Solo: just need to be joined
 
     final canUpdate =
         _isAdmin ||
@@ -171,8 +172,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         final message = isSoloMode
             ? 'Please join this project first to update tasks'
             : isGeneralTask
-                ? 'General tasks can only be updated by Project Manager'
-                : 'This task is assigned to ${assignedRole ?? "another role"}';
+            ? 'General tasks can only be updated by Project Manager'
+            : 'This task is assigned to ${assignedRole ?? "another role"}';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message), backgroundColor: Colors.orange),
         );
@@ -302,7 +303,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.check_circle, color: AppColors.success, size: 20),
+                      Icon(
+                        Icons.check_circle,
+                        color: AppColors.success,
+                        size: 20,
+                      ),
                       SizedBox(width: AppConstants.spacingS),
                       Text(
                         'This will:',
@@ -346,9 +351,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
             child: const Text('Complete Project'),
           ),
         ],
@@ -363,10 +366,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       // Call complete_project function
       final response = await SupabaseService.client.rpc(
         'complete_project',
-        params: {
-          'p_project_id': widget.project['id'],
-          'p_user_id': userId,
-        },
+        params: {'p_project_id': widget.project['id'], 'p_user_id': userId},
       );
 
       if (response['success'] == true) {
@@ -392,7 +392,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response['message'] ?? 'Failed to complete project'),
+              content: Text(
+                response['message'] ?? 'Failed to complete project',
+              ),
               backgroundColor: AppColors.error,
             ),
           );
@@ -1529,7 +1531,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     final isGeneralTask = assignedRole == null;
     final isPMRole = _isPM || userRole == 'pm' || userRole == 'project_manager';
     final roleMatches = !isGeneralTask && assignedRole == userRole;
-    final isJoinedSolo = isSoloMode && _userProject != null; // Solo: just need to be joined
+    final isJoinedSolo =
+        isSoloMode && _userProject != null; // Solo: just need to be joined
 
     final canUpdate =
         _isAdmin ||
@@ -2009,7 +2012,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       if (beforeDelete == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('You are not a member of this project')),
+            const SnackBar(
+              content: Text('You are not a member of this project'),
+            ),
           );
         }
         return;
@@ -2046,7 +2051,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           // Delete failed - still exists
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to leave project. Deleted: ${deleteResult?.length ?? 0} rows'),
+              content: Text(
+                'Failed to leave project. Deleted: ${deleteResult?.length ?? 0} rows',
+              ),
               backgroundColor: AppColors.error,
             ),
           );
@@ -2054,9 +2061,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error leaving project: $e'),
             backgroundColor: AppColors.error,
