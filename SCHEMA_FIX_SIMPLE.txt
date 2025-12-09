@@ -1,0 +1,57 @@
+🚀 CARA PALING CEPAT FIX SCHEMA CACHE ERROR
+
+========================================
+1. BUKA SUPABASE
+========================================
+- Go to supabase.com/dashboard
+- Select project QuestForge
+- Click "SQL Editor"
+- Click "+ New Query"
+
+========================================
+2. COPY PASTE CODE INI
+========================================
+Buka file: database\fixes\QUICK_RESET.sql
+Copy SEMUA isi
+Paste ke SQL Editor Supabase
+
+========================================
+3. RUN
+========================================
+Klik tombol RUN (biru besar)
+Tunggu sampai hijau ✓
+Tunggu sampai ada output "Tables:" di bawah
+
+========================================
+4. STOP FLUTTER
+========================================
+Tekan Ctrl+C di terminal Flutter
+
+========================================
+5. RESTART FLUTTER
+========================================
+Ketik: flutter run -d edge
+Tunggu sampai app start
+
+========================================
+6. TEST
+========================================
+- Login as user
+- Go to Projects > Join with Code
+- Enter code: XXXXXX
+- Click "Find Project"
+- Pilih role (atau auto-select for solo)
+- Click "Join Project"
+- Should work! ✓
+
+========================================
+SELESAI! 🎉
+========================================
+
+Jika masih error setelah semua step ini:
+- Buka browser incognito
+- Clear cache (Ctrl+Shift+Delete)
+- Tunggu 30 detik
+- Try again
+
+Good luck! 💪

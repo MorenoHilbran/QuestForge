@@ -1,11 +1,26 @@
-# 🎮 QuestForge
+# 🎮 QuestForge V2
 
 **QuestForge** adalah aplikasi project management gamifikasi yang memungkinkan mahasiswa untuk bergabung dalam project solo atau tim dengan sistem role-based dan badge achievements. Built dengan Flutter & Supabase untuk pengalaman real-time dan responsive.
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.9.2-02569B?logo=flutter)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)
 ![Dart](https://img.shields.io/badge/Dart-3.0+-0175C2?logo=dart)
-![Status](https://img.shields.io/badge/Status-Active-success)
+![Version](https://img.shields.io/badge/Version-2.0.0-success)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
+
+---
+
+## 🚀 What's New in V2
+
+- ✅ **Auto Project Codes**: Unique 6-character codes generated automatically
+- ✅ **Database Triggers**: Auto-calculate progress, award badges, log activities
+- ✅ **Task Claiming**: Users can claim and track their assigned tasks
+- ✅ **PM Approval**: Optional approval workflow for team projects
+- ✅ **Activity Logging**: Complete audit trail with 14 action types
+- ✅ **Performance**: 30+ indexes, optimized queries
+- ✅ **Security**: 35+ RLS policies for data protection
+- ✅ **Soft Delete**: Preserve data with deleted_at field
+- ✅ **Clean Code**: Removed 100+ lines of manual calculation logic
 
 ---
 
@@ -18,20 +33,34 @@
 - **Role Visual Feedback**: Role yang penuh akan grayed out dan tidak bisa dipilih
 
 ### 🎯 Project Management
+- **Project Codes**: Unique 6-character codes untuk join project (e.g., `ABC123`) ✨ NEW
 - **Solo Mode**: Project individual dengan tasks yang ditentukan admin
 - **Multiplayer Mode**: Project tim dengan required roles dan role limits
 - **Task Management**: Status tracking (todo, in progress, done)
-- **Progress Tracking**: Otomatis berdasarkan task completion dengan visual progress bar
+- **Task Claim System**: Users dapat claim tasks assigned ke role mereka ✨ NEW
+- **Progress Tracking**: Auto-calculated dari task completion (no manual updates!) ✨ IMPROVED
 - **Priority Levels**: Low, medium, high untuk setiap task
-- **Role Assignment**: Tasks dapat di-assign ke role tertentu
+- **Role Assignment**: Tasks dapat di-assign ke role atau specific user
 - **Member Display**: Lihat avatar dan jumlah member yang join (3/6 format)
 - **Completion Status**: Badge "COMPLETED" untuk project yang sudah selesai
+- **PM Approval**: Optional approval workflow untuk multiplayer projects ✨ NEW
+- **Milestones**: Track major project checkpoints with deadlines ✨ NEW
 
 ### 🏆 Gamification
 - Badge system berdasarkan project completion
+- **Auto-Award**: Badges automatically awarded via triggers ✨ IMPROVED
 - Role-based badges (Frontend, Backend, UI/UX, PM achievements)
 - Solo & Team mode badges
+- Task completion badges (10, 25, 50, 100 tasks) ✨ NEW
+- Milestone badges (5, 10, 25 milestones) ✨ NEW
 - Meta achievements (Versatile Adventurer, Quest Legend, dll)
+- Platinum tier badges for exceptional achievements ✨ NEW
+
+### 📊 Activity & Tracking
+- **Activity Logs**: Complete audit trail of all actions ✨ NEW
+- **Auto-Logging**: Triggers log all important activities ✨ NEW
+- Real-time activity feed for projects
+- Track who did what and when
 
 ### 🔐 Authentication
 - **Google OAuth login** untuk user (seamless integration)
@@ -53,36 +82,81 @@
 - User-specific data access control
 - OAuth integration dengan deep linking
 - Secure profile creation dan validation
+- Database-level constraints untuk data integrity ✨ NEW
+- Prevention of role escalation attacks ✨ NEW
 
 ---
 
-## 🆕 Recent Updates (v2.0 - Dec 2025)
+## 🆕 What's New in V2.0 (Dec 2025)
 
-### ✅ Implemented Features
-- **OAuth Auto-Login**: Google OAuth sekarang langsung redirect ke homepage setelah pilih akun
-- **Auto-Profile Creation**: Database trigger otomatis membuat profile untuk OAuth users
-- **Role Validation**: Role yang sudah penuh tidak bisa dipilih (grayed out dengan visual feedback)
-- **Member Visibility**: Users dapat melihat member lain yang join project yang sama
-- **Enhanced RLS Policies**: Cross-user visibility dengan tetap maintain security
-- **Null Safety**: Comprehensive null handling untuk semua data models
-- **Retry Logic**: Network request retry mechanism untuk handle connection issues
-- **Clean Progress Bars**: Removed percentage text untuk UI yang lebih clean
-- **Completed Project Badges**: Visual badge untuk project yang sudah selesai
-- **Join Validation**: Validasi untuk prevent join project yang full/completed
+### 🚀 Major Features
 
-### 🐛 Bug Fixes
-- Fixed OAuth "Connection reset" error dengan retry mechanism
-- Fixed "Users not visible" bug dengan RLS policy updates
-- Fixed progress bar tidak full width saat 100%
-- Fixed badge system tidak award badges setelah completion
-- Fixed admin monitoring data tidak akurat
-- Fixed null pointer exceptions di UserModel parsing
+#### **Project Code System** ✨ NEW
+- Every project gets unique 6-character code (e.g., `ABC123`)
+- Join projects privately by entering code
+- Share codes via any messaging platform
+- Auto-generated on project creation
 
-### 📚 New Documentation
-- `COMPLETE_DATABASE_SCHEMA.sql` - All-in-one database setup
-- `FIX_OAUTH_CONNECTION_RESET.md` - OAuth troubleshooting guide
-- `FIX_USER_VISIBILITY.md` - Multi-user visibility fix
-- `ROLE_VALIDATION_FEATURE.md` - Role validation system docs
+#### **Task Claim System** ✨ NEW
+- Users can "claim" tasks assigned to their role
+- Prevents duplicate work from multiple team members
+- Shows who's working on what task
+- Can unclaim if needed
+
+#### **Auto-Progress Calculation** ✨ IMPROVED
+- Progress automatically calculated from task completion
+- No manual updates needed from Flutter app
+- Real-time updates via database triggers
+- Always accurate and consistent
+
+#### **Badge Auto-Award** ✨ IMPROVED
+- Badges automatically awarded on achievements
+- Triggers handle everything in database
+- No manual function calls needed
+- Instant badge notification
+
+#### **PM Approval Workflow** ✨ NEW
+- Optional approval for team projects
+- PM can approve/reject join requests
+- Users see "Pending Approval" status
+- Approval history tracked
+
+#### **Milestone System** ✨ NEW
+- Create major project checkpoints
+- Set target dates and track completion
+- Sequential ordering (Milestone 1, 2, 3...)
+- Link tasks to milestones
+
+#### **Activity Logs** ✨ NEW
+- Complete audit trail of all actions
+- Track project creation, joins, task updates, etc.
+- Real-time activity feed
+- Helpful for troubleshooting
+
+### 🔧 Technical Improvements
+
+#### **Database V2 Schema**
+- ❌ Removed ambiguous `max_members` field
+- ✅ Single source of truth: `role_limits`
+- ✅ Comprehensive constraints at database level
+- ✅ 15+ new indexes for performance
+- ✅ Soft delete support for data recovery
+- ✅ Enhanced RLS policies for security
+
+#### **Auto-Everything**
+- Auto-generate project codes
+- Auto-calculate progress
+- Auto-award badges
+- Auto-log activities
+- Auto-create profiles (OAuth)
+- Auto-update timestamps
+
+### 📚 Documentation V2
+- `COMPLETE_DATABASE_SCHEMA_V2.sql` - Production-ready schema
+- `DATABASE_V2_MIGRATION_GUIDE.md` - Detailed migration steps
+- `QUICKSTART_V2.md` - Quick reference for developers
+- `CHANGELOG_V2.md` - Complete changelog
+- `ACTION_PLAN.md` - Step-by-step action plan
 - `BADGE_SYSTEM_SETUP.md` - Badge system complete guide
 
 ---

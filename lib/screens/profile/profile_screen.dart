@@ -17,9 +17,7 @@ class ProfileScreen extends StatelessWidget {
     final user = authProvider.currentUser;
 
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -36,10 +34,7 @@ class ProfileScreen extends StatelessWidget {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: AppColors.border,
-            height: 3,
-          ),
+          child: Container(color: AppColors.border, height: 3),
         ),
       ),
       body: SingleChildScrollView(
@@ -55,8 +50,8 @@ class ProfileScreen extends StatelessWidget {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: AppColors.primary,
-                    backgroundImage: user.avatarUrl != null &&
-                            user.avatarUrl!.isNotEmpty
+                    backgroundImage:
+                        user.avatarUrl != null && user.avatarUrl!.isNotEmpty
                         ? NetworkImage(user.avatarUrl!)
                         : null,
                     child: user.avatarUrl == null || user.avatarUrl!.isEmpty
@@ -106,8 +101,9 @@ class ProfileScreen extends StatelessWidget {
                           color: AppColors.border,
                           width: AppConstants.borderWidth,
                         ),
-                        borderRadius:
-                            BorderRadius.circular(AppConstants.borderRadius),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.borderRadius,
+                        ),
                       ),
                       child: const Text(
                         'ADMIN',
@@ -180,16 +176,31 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                   )
+                : user.badges.length == 1
+                // Single badge - centered
+                ? Center(
+                    child: SizedBox(
+                      width: (MediaQuery.of(context).size.width - 64) / 3,
+                      child: AspectRatio(
+                        aspectRatio: 0.8,
+                        child: _buildBadgeCard(
+                          user.badges[0].name,
+                          user.badges[0].tier ?? '',
+                        ),
+                      ),
+                    ),
+                  )
+                // Multiple badges - use grid
                 : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      childAspectRatio: 0.8,
-                      crossAxisSpacing: AppConstants.spacingM,
-                      mainAxisSpacing: AppConstants.spacingM,
-                    ),
+                          crossAxisCount: 3,
+                          childAspectRatio: 0.8,
+                          crossAxisSpacing: AppConstants.spacingM,
+                          mainAxisSpacing: AppConstants.spacingM,
+                        ),
                     itemCount: user.badges.length,
                     itemBuilder: (context, index) {
                       final badge = user.badges[index];
@@ -204,9 +215,7 @@ class ProfileScreen extends StatelessWidget {
               text: 'Edit Profile',
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const EditProfileScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                 );
               },
               color: AppColors.secondary,
@@ -222,8 +231,7 @@ class ProfileScreen extends StatelessWidget {
                 await authProvider.signOut();
                 if (context.mounted) {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                        builder: (_) => const LoginScreen()),
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
                   );
                 }
               },
@@ -261,10 +269,7 @@ class ProfileScreen extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(AppConstants.borderRadius),
         boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            offset: Offset(4, 4),
-          ),
+          BoxShadow(color: AppColors.shadow, offset: Offset(4, 4)),
         ],
       ),
       child: Column(
@@ -276,16 +281,9 @@ class ProfileScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: badgeColor,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.border,
-                width: 2,
-              ),
+              border: Border.all(color: AppColors.border, width: 2),
             ),
-            child: const Icon(
-              Icons.badge,
-              color: Colors.black,
-              size: 24,
-            ),
+            child: const Icon(Icons.badge, color: Colors.black, size: 24),
           ),
           const SizedBox(height: AppConstants.spacingS),
           Padding(

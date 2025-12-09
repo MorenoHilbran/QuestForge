@@ -18,33 +18,41 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
+  final ValueNotifier<int> _refreshTrigger = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _refreshTrigger.dispose();
+    super.dispose();
+  }
+
+  void _triggerRefresh() {
+    _refreshTrigger.value++;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AuthGuard(
-      child: _buildContent(context),
-    );
+    return AuthGuard(child: _buildContent(context));
   }
 
   Widget _buildContent(BuildContext context) {
     final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     final List<Widget> screens = [
-      isAdmin ? const AdminMonitoringScreen() : const HomeScreen(),
-      isAdmin ? const AdminManageProjectsScreen() : const ProjectsScreen(),
+      isAdmin
+          ? const AdminMonitoringScreen()
+          : HomeScreen(refreshTrigger: _refreshTrigger),
+      isAdmin
+          ? const AdminManageProjectsScreen()
+          : ProjectsScreen(refreshTrigger: _refreshTrigger),
       const ProfileScreen(),
     ];
 
     return Scaffold(
-      body: screens[_currentIndex],
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: AppColors.border,
-              width: 3.0,
-            ),
-          ),
+          border: Border(top: BorderSide(color: AppColors.border, width: 3.0)),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
@@ -56,21 +64,19 @@ class _MainNavigationState extends State<MainNavigation> {
           backgroundColor: Colors.white,
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.textSecondary,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           items: [
             BottomNavigationBarItem(
               icon: _buildIcon(
-                isAdmin ? Icons.monitor_outlined : Icons.home_outlined, 
-                0
+                isAdmin ? Icons.monitor_outlined : Icons.home_outlined,
+                0,
               ),
               activeIcon: _buildIcon(
-                isAdmin ? Icons.monitor : Icons.home, 
-                0, 
-                isActive: true
+                isAdmin ? Icons.monitor : Icons.home,
+                0,
+                isActive: true,
               ),
               label: isAdmin ? 'Monitor' : 'Home',
             ),
@@ -97,10 +103,7 @@ class _MainNavigationState extends State<MainNavigation> {
           ? BoxDecoration(
               color: AppColors.primary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: AppColors.primary,
-                width: 2,
-              ),
+              border: Border.all(color: AppColors.primary, width: 2),
             )
           : null,
       child: Icon(icon),

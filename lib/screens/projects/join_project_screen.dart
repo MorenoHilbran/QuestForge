@@ -21,22 +21,28 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
   bool _isLoading = false;
   Map<String, int> _currentRoleCounts = {};
   Map<String, int> _roleLimits = {};
+  late Map<String, dynamic> _projectData;
 
   @override
   void initState() {
     super.initState();
+    // Initialize with passed data
+    _projectData = Map<String, dynamic>.from(widget.project);
     _loadRoleAvailability();
   }
 
   Future<void> _loadRoleAvailability() async {
-    if (widget.project['mode'] != 'multiplayer') return;
+    // Get project mode safely
+    final projectMode = _projectData['mode'] ?? 'solo';
+    if (projectMode != 'multiplayer') return;
 
     try {
       // Load current role counts
       final response = await SupabaseService.client
           .from('user_projects')
           .select('role')
-          .eq('project_id', widget.project['id']);
+          .eq('project_id', _projectData['id'])
+          .eq('approval_status', 'approved');
 
       final roleCounts = <String, int>{};
       for (var userProject in response as List) {
@@ -45,7 +51,7 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
       }
 
       // Load role limits from project
-      final roleLimitsData = widget.project['role_limits'] as Map<String, dynamic>?;
+      final roleLimitsData = _projectData['role_limits'] as Map<String, dynamic>?;
       final limits = <String, int>{};
       if (roleLimitsData != null) {
         roleLimitsData.forEach((key, value) {
@@ -83,7 +89,31 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
       return;
     }
 
-    final isSolo = widget.project['mode'] == 'solo';
+    final isSolo = _projectData['mode'] == 'solo';
+    
+    // Check if solo project already has a member
+    if (isSolo) {
+      try {
+        final existingMembers = await SupabaseService.client
+            .from('user_projects')
+            .select('id')
+            .eq('project_id', _projectData['id']);
+        
+        if (existingMembers.isNotEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('This solo project already has a member!'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error checking solo project members: $e');
+      }
+    }
     
     if (!isSolo && _selectedRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -106,21 +136,38 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Insert into user_projects
+      // V2: Check if project requires approval
+      final requiresApproval = _projectData['requires_approval'] ?? false;
+      
+      // Insert into user_projects with V2 approval fields
       await SupabaseService.client.from('user_projects').insert({
         'user_id': auth.currentUser!.id,
-        'project_id': widget.project['id'],
+        'project_id': _projectData['id'],
         'role': _selectedRole ?? 'solo',
-        'mode': widget.project['mode'] ?? 'solo',
         'progress': 0,
         'status': 'in_progress',
+        // V2: Add approval status
+        'approval_status': requiresApproval ? AppConstants.approvalPending : AppConstants.approvalApproved,
+        'approved_by': requiresApproval ? null : auth.currentUser!.id, // Auto-approve if not required
+        'approved_at': requiresApproval ? null : DateTime.now().toIso8601String(),
       });
 
       if (mounted) {
         Navigator.of(context).pop(true); // Return true to indicate success
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Successfully joined ${widget.project['title']}')),
-        );
+        
+        // Show different message based on approval requirement
+        if (requiresApproval) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Request sent! Waiting for PM approval.'),
+              backgroundColor: AppColors.warning,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Successfully joined ${_projectData['title']}')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -134,8 +181,8 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isSolo = widget.project['mode'] == 'solo';
-    final requiredRoles = widget.project['required_roles'] as List?;
+    final isSolo = _projectData['mode'] == 'solo';
+    final requiredRoles = _projectData['required_roles'] as List?;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -172,7 +219,7 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.project['title'] ?? 'Untitled',
+                    _projectData['title'] ?? 'Untitled',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -186,12 +233,12 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _getDifficultyColor(widget.project['difficulty']),
+                          color: _getDifficultyColor(_projectData['difficulty']),
                           border: Border.all(color: Colors.black, width: 2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          widget.project['difficulty']?.toUpperCase() ?? 'MEDIUM',
+                          _projectData['difficulty']?.toUpperCase() ?? 'MEDIUM',
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -221,7 +268,7 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
                   ),
                   const SizedBox(height: AppConstants.spacingM),
                   Text(
-                    widget.project['description'] ?? '',
+                    _projectData['description'] ?? '',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -257,7 +304,7 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
                     child: Opacity(
-                      opacity: isFull ? 0.5 : 1.0,
+                      opacity: isFull ? 0.6 : 1.0,
                       child: InkWell(
                         onTap: isFull ? null : () {
                           setState(() {
@@ -266,63 +313,94 @@ class _JoinProjectScreenState extends State<JoinProjectScreen> {
                         },
                         child: NeoCard(
                           color: isFull 
-                              ? Colors.grey.shade300 
+                              ? Colors.grey.shade200 
                               : (isSelected ? _getRoleColor(role) : Colors.white),
-                          child: Row(
+                          child: Stack(
                             children: [
-                              Icon(
-                                isFull 
-                                    ? Icons.block 
-                                    : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-                                color: Colors.black,
-                              ),
-                              const SizedBox(width: AppConstants.spacingM),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              Row(
+                                children: [
+                                  Icon(
+                                    isFull 
+                                        ? Icons.block 
+                                        : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                                    color: isFull ? Colors.red : Colors.black,
+                                  ),
+                                  const SizedBox(width: AppConstants.spacingM),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              AppConstants.projectRoleLabels[role] ?? role,
+                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    decoration: isFull ? TextDecoration.lineThrough : null,
+                                                  ),
+                                            ),
+                                            // Show availability badge
+                                            if (_roleLimits.isNotEmpty)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: isFull ? AppColors.error : AppColors.success,
+                                                  border: Border.all(color: Colors.black, width: 2),
+                                                ),
+                                                child: Text(
+                                                  '$currentCount/$limit',
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
                                         Text(
-                                          AppConstants.projectRoleLabels[role] ?? role,
-                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                fontWeight: FontWeight.bold,
+                                          isFull 
+                                              ? 'This role is full - cannot join' 
+                                              : _getRoleDescription(role),
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                color: isFull ? AppColors.error : AppColors.textSecondary,
                                               ),
                                         ),
-                                        // Show availability
-                                        if (_roleLimits.isNotEmpty)
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isFull ? AppColors.error : AppColors.success,
-                                              border: Border.all(color: Colors.black, width: 2),
-                                            ),
-                                            child: Text(
-                                              '$currentCount/$limit',
-                                              style: const TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
                                       ],
                                     ),
-                                    Text(
-                                      isFull 
-                                          ? 'Role is full' 
-                                          : _getRoleDescription(role),
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                            color: isFull ? AppColors.error : AppColors.textSecondary,
-                                          ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
+                              // Add large FULL badge overlay
+                              if (isFull)
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error,
+                                      border: Border.all(color: Colors.black, width: 3),
+                                    ),
+                                    child: const Text(
+                                      'FULL',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        letterSpacing: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),

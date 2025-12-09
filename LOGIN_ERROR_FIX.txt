@@ -1,0 +1,84 @@
+🚨 LOGIN ERROR FIX - Read This!
+
+========================================
+PROBLEM
+========================================
+After schema reset:
+- Login button tidak work
+- Page kembali ke login screen
+- Tidak ada error message
+
+ROOT CAUSE
+========================================
+Trigger `handle_new_user()` yang auto-create profile setelah login tidak ada setelah reset.
+
+SOLUTION
+========================================
+Run UPDATED SQL file dengan trigger included!
+
+========================================
+QUICK FIX (2 MENIT)
+========================================
+
+1. Open Supabase SQL Editor
+   - Go to dashboard
+   - Select project
+   - Click SQL Editor → New Query
+
+2. Buka file: database\fixes\QUICK_RESET.sql
+   (Sudah updated dengan trigger!)
+
+3. Copy SEMUA isi
+
+4. Paste ke SQL Editor
+
+5. Click RUN
+
+6. Tunggu sampai hijau dan ada output "Database reset complete!"
+
+7. Close SQL Editor
+
+8. Stop Flutter (Ctrl+C)
+
+9. Restart Flutter:
+   flutter run -d edge
+
+10. Try login again - should work now! ✓
+
+========================================
+IF STILL ERROR
+========================================
+
+Option A: Run COMPLETE_RESET_AND_FIX.sql
+- More detailed version
+- Better for troubleshooting
+- Same file: database\fixes\COMPLETE_RESET_AND_FIX.sql
+
+Option B: Check Supabase Logs
+- Go to Supabase Dashboard
+- Click Logs
+- Check for any error messages during trigger execution
+
+========================================
+WHAT CHANGED
+========================================
+
+Added trigger:
+- Function: handle_new_user()
+- Auto-creates profile setiap ada user baru di auth.users
+- Runs saat user register/login dengan OAuth
+
+========================================
+VERIFY SUCCESS
+========================================
+
+After restart, test login:
+1. Click "Login with Google"
+2. Select account
+3. Should redirect ke Home (tidak back ke login)
+4. See your profile info
+5. ✓ SUCCESS!
+
+========================================
+
+Questions? Let me know! 🚀

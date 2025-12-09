@@ -42,14 +42,14 @@ class AuthProvider extends ChangeNotifier {
     // Retry mechanism for network issues
     int retryCount = 0;
     const maxRetries = 3;
-    
+
     while (retryCount < maxRetries) {
       try {
         // Add small delay for first-time OAuth users (profile creation)
         if (retryCount > 0) {
           await Future.delayed(Duration(milliseconds: 500 * retryCount));
         }
-        
+
         final response = await SupabaseService.client
             .from('profiles')
             .select('*, user_badges(*, badges(*))')
@@ -60,7 +60,7 @@ class AuthProvider extends ChangeNotifier {
           print('Profile loaded successfully for user: $userId');
           print('Profile data keys: ${response.keys}');
         }
-        
+
         // Validate essential fields before parsing
         if (response['id'] == null) {
           throw Exception('Profile ID is null');
@@ -68,7 +68,7 @@ class AuthProvider extends ChangeNotifier {
         if (response['email'] == null) {
           throw Exception('Profile email is null');
         }
-        
+
         _currentUser = UserModel.fromJson(response);
         notifyListeners();
         return; // Success, exit
@@ -77,7 +77,7 @@ class AuthProvider extends ChangeNotifier {
           print('Error loading profile (attempt ${retryCount + 1}): $e');
           print('Stack trace: $stackTrace');
         }
-        
+
         // If profile doesn't exist on first attempt (new OAuth user), create it
         if (retryCount == 0 && e.toString().contains('JSON object')) {
           try {
@@ -88,23 +88,25 @@ class AuthProvider extends ChangeNotifier {
               if (email.isEmpty) {
                 throw Exception('Cannot create profile: email is empty');
               }
-              
+
               // Get name with fallback
-              final name = user.userMetadata?['full_name']?.toString() ?? 
-                           user.userMetadata?['name']?.toString() ?? 
-                           email.split('@').first;
-              
+              final name =
+                  user.userMetadata?['full_name']?.toString() ??
+                  user.userMetadata?['name']?.toString() ??
+                  email.split('@').first;
+
               // Ensure name is not empty
               final finalName = name.isEmpty ? 'User' : name;
-              
-              final avatarUrl = user.userMetadata?['avatar_url']?.toString() ?? 
-                               user.userMetadata?['picture']?.toString();
-              
+
+              final avatarUrl =
+                  user.userMetadata?['avatar_url']?.toString() ??
+                  user.userMetadata?['picture']?.toString();
+
               if (kDebugMode) {
                 print('Creating new profile for user: $email');
                 print('Name: $finalName, Avatar: $avatarUrl');
               }
-              
+
               // Use upsert to avoid conflicts
               await SupabaseService.client.from('profiles').upsert({
                 'id': userId,
@@ -113,7 +115,7 @@ class AuthProvider extends ChangeNotifier {
                 'avatar_url': avatarUrl,
                 'role': 'user',
               }, onConflict: 'id');
-              
+
               if (kDebugMode) print('Profile created successfully');
             }
           } catch (createError) {
@@ -123,7 +125,7 @@ class AuthProvider extends ChangeNotifier {
             }
           }
         }
-        
+
         retryCount++;
         if (retryCount >= maxRetries) {
           if (kDebugMode) print('Max retries reached for loading profile');
@@ -149,12 +151,12 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await SupabaseService.client.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb 
-            ? '${Uri.base.origin}/' 
+        redirectTo: kIsWeb
+            ? '${Uri.base.origin}/'
             : 'questforge://login-callback',
         authScreenLaunchMode: LaunchMode.inAppWebView,
       );
-      
+
       if (kDebugMode) print('OAuth response: $response');
       _isLoading = false;
       notifyListeners();
@@ -201,28 +203,44 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Sign up with email and password
-  Future<bool> signUpWithEmail(String email, String password, String name) async {
+  Future<bool> signUpWithEmail(
+    String email,
+    String password,
+    String name,
+  ) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      if (kDebugMode) {
+        print('=== SIGNUP ATTEMPT ===');
+        print('Email: $email');
+        print('Name: $name');
+        print('Password length: ${password.length}');
+      }
+
       final response = await SupabaseService.client.auth.signUp(
         email: email,
         password: password,
         data: {
-          'name': name,
+          'full_name': name, // Store in auth metadata for trigger to use
         },
       );
 
+      if (kDebugMode) {
+        print('=== SIGNUP RESPONSE ===');
+        print('User: ${response.user?.id}');
+        print(
+          'Session: ${response.session?.accessToken != null ? "exists" : "null"}',
+        );
+      }
+
       if (response.user != null) {
-        // Create profile in profiles table
-        await SupabaseService.client.from('profiles').insert({
-          'id': response.user!.id,
-          'name': name,
-          'email': email,
-          'role': 'user',
-        });
+        if (kDebugMode) print('User created, loading profile...');
+
+        // Profile is automatically created by handle_new_user() trigger
+        // No need to manually insert here!
 
         await _loadUserProfile(response.user!.id);
         _isLoading = false;
@@ -234,11 +252,20 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = 'Registration failed';
       notifyListeners();
       return false;
-    } catch (e) {
+    } catch (e, stackTrace) {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-      if (kDebugMode) print('Email sign up error: $e');
+      if (kDebugMode) {
+        print('=== SIGNUP ERROR ===');
+        print('Error: $e');
+        print('Error type: ${e.runtimeType}');
+        if (e is AuthException) {
+          print('Auth error message: ${e.message}');
+          print('Auth error code: ${e.statusCode}');
+        }
+        print('Stack trace: $stackTrace');
+      }
       return false;
     }
   }

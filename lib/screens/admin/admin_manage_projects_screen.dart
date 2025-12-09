@@ -129,6 +129,7 @@ class _AdminManageProjectsScreenState extends State<AdminManageProjectsScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Project Title *',
                       border: OutlineInputBorder(),
+                      helperText: 'Minimum 3 characters',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -138,6 +139,7 @@ class _AdminManageProjectsScreenState extends State<AdminManageProjectsScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Description *',
                       border: OutlineInputBorder(),
+                      helperText: 'Minimum 10 characters',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -287,9 +289,18 @@ class _AdminManageProjectsScreenState extends State<AdminManageProjectsScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (titleController.text.isEmpty || descController.text.isEmpty) {
+                // Validate title (min 3 chars)
+                if (titleController.text.trim().length < 3) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill required fields')),
+                    const SnackBar(content: Text('Title must be at least 3 characters')),
+                  );
+                  return;
+                }
+                
+                // Validate description (min 10 chars)
+                if (descController.text.trim().length < 10) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Description must be at least 10 characters')),
                   );
                   return;
                 }
@@ -320,7 +331,7 @@ class _AdminManageProjectsScreenState extends State<AdminManageProjectsScreen> {
                   'required_roles': mode == 'multiplayer' ? requiredRoles : null,
                   'role_limits': mode == 'multiplayer' && roleLimits.isNotEmpty 
                       ? roleLimits 
-                      : null,
+                      : {},  // Empty object for solo projects (NOT null!)
                   'created_by_admin': auth.currentUser?.id,
                 };
 
