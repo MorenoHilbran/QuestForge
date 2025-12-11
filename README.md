@@ -1,4 +1,4 @@
-# 🎮 QuestForge V2
+# 🎮 QuestForge V1.0.1
 
 **QuestForge** adalah aplikasi project management gamifikasi yang memungkinkan mahasiswa untuk bergabung dalam project solo atau tim dengan sistem role-based dan badge achievements. Built dengan Flutter & Supabase untuk pengalaman real-time dan responsive.
 
